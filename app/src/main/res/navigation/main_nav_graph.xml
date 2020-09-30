@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main_nav_graph"
+    app:startDestination="@id/globeFragment">
+
+    <fragment
+        android:id="@+id/globeFragment"
+        android:name="github.hmasum18.satellight.views.GlobeFragment"
+        android:label="fragment_globe"
+        tools:layout="@layout/fragment_globe" >
+        <action
+            android:id="@+id/action_globeFragment_to_googleMapFragment"
+            app:destination="@id/googleMapFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/googleMapFragment"
+        android:name="github.hmasum18.satellight.views.GoogleMapFragment"
+        android:label="fragment_google_map"
+        tools:layout="@layout/fragment_google_map" >
+        <action
+            android:id="@+id/action_googleMapFragment_to_globeFragment"
+            app:destination="@id/globeFragment" />
+    </fragment>
+
+</navigation>
