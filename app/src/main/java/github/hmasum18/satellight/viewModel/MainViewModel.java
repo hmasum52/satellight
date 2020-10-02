@@ -11,7 +11,6 @@ import java.util.Map;
 
 import github.hmasum18.satellight.models.SatelliteBasicData;
 import github.hmasum18.satellight.repositories.MainRepository;
-import gov.nasa.worldwind.geom.Location;
 
 public class MainViewModel extends ViewModel {
 
@@ -20,15 +19,6 @@ public class MainViewModel extends ViewModel {
 
     public MainViewModel() {
         mainRepository = new MainRepository();
-    }
-
-    /**
-     * request for sub solar point
-     * @return
-     */
-    public LiveData<Location> getCurrentSubSolarPointLocation() {
-        Log.w(TAG," getCurrentSubSolarPointLocation is Called");
-        return mainRepository.getCurrentSubSolarPointLocation();
     }
 
     public LiveData<Map<String,ArrayList<SatelliteBasicData>>> getLocationOfSatellite(ArrayList<String> satIdList, String fromTime, String toTime){

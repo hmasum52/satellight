@@ -62,19 +62,11 @@ public class MainRepository {
     }
 
     public LiveData<Map<String,ArrayList<SatelliteBasicData>> > getLocationOfSatellites(ArrayList<String> satCodeList, String fromTime, String toTime){
+        if(satBasicDataMutableMap.getValue() == null)
         for (String satCode : satCodeList) {
             callSatelliteDataFromSSCByName(satCode, fromTime, toTime);
         }
         return satBasicDataMutableMap;
-    }
-
-    /**
-     * calls the SubSolarPointFinderTask to find SubSolarPoint from web
-     * @return current Location of SubSolarPoint when found
-     */
-    public LiveData<Location> getCurrentSubSolarPointLocation() {
-        new SubSolarPointFinderTask().execute();
-        return currentSubSolarPointLocation;
     }
 
     private void  callSatelliteDataFromSSCByName(String satCode,String fromTime,String toTime){
@@ -180,99 +172,6 @@ public class MainRepository {
         return Math.sqrt(nominator/denominator); //calculate earth radius and return
     }
 
-    /**
-     * this async task fetch html response from https://www.timeanddate.com/worldclock/sunearth.php
-     * and then parse the html response with Jsoup and init currentSubSolarPointLocation LiveData
-     */
-    private class SubSolarPointFinderTask extends AsyncTask<Void,Void,Void> {
 
-        StringBuilder stringBuilder = new StringBuilder();
 
-        @Override
-        protected Void doInBackground(Void... voids) {
-
-            try {
-                URL url = new URL("https://www.timeanddate.com/worldclock/sunearth.php");
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("GET");
-
-                //now get the response html as string
-                BufferedReader responseReader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                String responseLine;
-                while( (responseLine = responseReader.readLine()) != null){
-                    stringBuilder.append(responseLine);
-                }
-                responseReader.close();
-                connection.disconnect();
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            super.onPostExecute(aVoid);
-            //parse html responses with Jsoup
-            Document htmlResponseDoc = Jsoup.parse(stringBuilder.toString());
-
-            String searchText = "Position of the Sun: Subsolar Point";
-            //Log.w(TAG,"doc: "+htmlResponseDoc.toString());
-            if(stringBuilder.toString().contains(searchText)){
-               // Log.w(TAG,"doc: "+htmlResponseDoc.toString());
-/*
-                int idx =  htmlResponseDoc.toString().indexOf("The Sun is currently above");
-                int idx2 = htmlResponseDoc.toString().indexOf("The Moon is currently above",idx);
-                Log.w(TAG,"out: "+htmlResponseDoc.toString().substring(idx,idx2));*/
-
-                Elements elements = htmlResponseDoc.getElementsByTag("p");
-
-                //find for ex: On Friday, 18 September 2020, 18:48:00 UTC the Sun is at its zenith at Latitude: 1° 28' North, Longitude: 103° 32' West
-                String subSolarPointPosition = "";
-                for (Element element : elements) {
-
-                    String text = element.text();
-                    if(text.contains("Sun is at its zenith")){
-                        Log.w(TAG,"SubSolarPointFinderTask:"+text);
-                        subSolarPointPosition = text;
-                    }
-                }
-                int idx = subSolarPointPosition.indexOf("Latitude: ")+"Latitude: ".length();
-                int idx1 = subSolarPointPosition.indexOf(",",idx);
-                //ex: 1° 28' North
-                String latString = subSolarPointPosition.substring(idx,idx1);
-                String[] temp = latString.split(" ");
-
-                double latitude = 0;
-                if(temp.length == 3){
-                    latitude = Double.parseDouble(temp[0].substring(0,temp[0].length()-1)); //1.0000
-                    latitude += Double.parseDouble(temp[1].substring(0,temp[1].length()-1))/60d;//1.466666666
-                    latitude = temp[2].equals("North") ? latitude : -latitude; //1.4666666
-                }
-                Log.w(TAG,"latitude: "+latitude);
-
-                idx = subSolarPointPosition.indexOf("Longitude: ")+"Longitude: ".length();
-                //ex: 103° 32' West
-                String lngString = subSolarPointPosition.substring(idx);
-
-                Log.w(TAG,"latString: "+latString+" lngString: "+lngString);
-                temp = lngString.split(" ");
-
-                double longitude = 0;
-                if(temp.length == 3){
-                    longitude = Double.parseDouble(temp[0].substring(0,temp[0].length()-1)); //103.0000
-                    longitude += Double.parseDouble(temp[1].substring(0,temp[1].length()-1))/60d; //103.5333333
-                    longitude = temp[2].equals("East") ? longitude : -longitude;//-103.533333
-                }
-                Log.w(TAG,"latitude: "+longitude);
-
-               // gov.nasa.worldwind.geom.
-                Location subSolarPointLocation = new Location(latitude,longitude);
-                currentSubSolarPointLocation.postValue(subSolarPointLocation);
-            }else{
-                Log.w(TAG,"SubSolarPointFinderTask: sun sub solar point not found");
-            }
-        }
-    }
 }

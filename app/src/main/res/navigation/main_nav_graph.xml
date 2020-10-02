@@ -9,19 +9,16 @@
         android:id="@+id/globeFragment"
         android:name="github.hmasum18.satellight.views.GlobeFragment"
         android:label="fragment_globe"
-        tools:layout="@layout/fragment_globe" >
-        <action
-            android:id="@+id/action_globeFragment_to_googleMapFragment"
-            app:destination="@id/googleMapFragment" />
-    </fragment>
+        tools:layout="@layout/fragment_globe" />
     <fragment
         android:id="@+id/googleMapFragment"
         android:name="github.hmasum18.satellight.views.GoogleMapFragment"
         android:label="fragment_google_map"
-        tools:layout="@layout/fragment_google_map" >
-        <action
-            android:id="@+id/action_googleMapFragment_to_globeFragment"
-            app:destination="@id/globeFragment" />
-    </fragment>
+        tools:layout="@layout/fragment_google_map" />
+    <fragment
+        android:id="@+id/modelViewFragment"
+        android:name="github.hmasum18.satellight.views.ModelViewFragment"
+        android:label="fragment_model_view"
+        tools:layout="@layout/fragment_model_view" />
 
 </navigation>

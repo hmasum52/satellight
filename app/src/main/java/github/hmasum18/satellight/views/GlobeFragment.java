@@ -7,7 +7,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.navigation.fragment.NavHostFragment;
 
 import android.os.Handler;
 import android.util.Log;
@@ -16,7 +15,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.LinearInterpolator;
-import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
@@ -24,7 +22,6 @@ import com.google.android.material.chip.ChipGroup;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +51,9 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
 
     public static final String TAG = "GlobeFragment:";
 
+    //for accessing common method of all the fragments
+    MapsActivity mapsActivity;
+
     //data sources
     private MainViewModel mainViewModel;
 
@@ -63,7 +63,6 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
     private Placemark lastplackmark;
     private boolean scaleUp = false;
 
-    private Button mMapSwitchButton;
     private TextView mSatLatTV,mSatLngTV,mSatHeightTV,mSatSpeedTV,mDateTV;
     private ChipGroup mSatelliteChipGroup;
 
@@ -74,7 +73,9 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
     protected  double lightLngDegreesPerSec = (0+0/60+1/3600)/60; //dif 0° 00' 01.0" south
     protected long lastFrameTimeNanos;
     private AtmosphereLayer atmosphereLayer;
-    protected boolean activityPaused;
+    protected boolean fragmentPaused;
+
+
 
     //data from nasa ssc api
     ArrayList<String> satCodeList = new ArrayList<>(Arrays.asList(
@@ -83,7 +84,6 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
     public  Map<String, ArrayList<SatelliteBasicData> > allSatDatFromSSCMap = new HashMap<>();
 
     //for currently tracked satellite
-    public String activeSatCode = "iss"; //this is iss by default but will change when another one selected
     public String prevSatCode = "";
     public Position activeSatPosition = new Position(0,0,0);
     public List<SatelliteBasicData> activeSatDataList = new ArrayList<>(); //store the currently active satellite
@@ -108,15 +108,16 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         return this.worldWindow;
     }
 
-   /* @Override
+    @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
 
         }
         //make the activity landscape for this fragment
-        getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-    }*/
+        //getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        mapsActivity = (MapsActivity) this.getActivity();
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -128,34 +129,33 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         //views
         View rootView = inflater.inflate(R.layout.fragment_globe, container, false);
 
-        mMapSwitchButton = rootView.findViewById(R.id.globeFrag_googleMapBtn);
         //get the layout where we will add our globe
         FrameLayout globeLayout = rootView.findViewById(R.id.globe);
         // Add the WorldWindow view object to the layout that was reserved for the globe.
         globeLayout.addView(this.createWorldWindow());
 
-        mSatLatTV = rootView.findViewById(R.id.globeFrag_latTV);
+       /* mSatLatTV = rootView.findViewById(R.id.globeFrag_latTV);
         mSatLngTV = rootView.findViewById(R.id.globeFrag_lngTV);
         mSatHeightTV = rootView.findViewById(R.id.globeFrag_heightTV);
         mSatSpeedTV = rootView.findViewById(R.id.globeFrag_speedTV);
-        mDateTV = rootView.findViewById(R.id.globeFrag_dateTV);
+        mDateTV = rootView.findViewById(R.id.globeFrag_dateTV);*/
 
         mSatelliteChipGroup = rootView.findViewById(R.id.globeFrag_satelliteCG);
 
         return rootView;
     }
 
-    //fetch all the necessary data from mainViewModel
+    /**
+     * fetch all the necessary data from mainViewModel
+     */
     public void fetchInitialData(){
-        //fetch sub solar point
-        /*mainViewModel.getCurrentSubSolarPointLocation().observe(getViewLifecycleOwner(), location ->{
-            sunLocation = location;
-            Log.w(TAG,"subSolarPoint new fetchedData: "+"sun lat:"+location.latitude+" sun lng: "+location.longitude);
-        });*/
-
        fetchSatDataFromSSC(satCodeList);
     }
 
+    /**
+     * name of the function suggest what it does
+     * @param satCodeList
+     */
     public void fetchSatDataFromSSC(ArrayList<String> satCodeList){
         //fetch satellite data from nasa SSC
         String fromTime = Utils.getTimeAsString(System.currentTimeMillis()-(1000*60*10)); //before 10 min of current timestamp
@@ -165,8 +165,8 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
             Log.w(TAG,"number of sat data in the map:"+satelliteBasicDataMap.size());
             if(satelliteBasicDataMap.size()>=7){
                 allSatDatFromSSCMap = satelliteBasicDataMap;
-                activeSatDataList = satelliteBasicDataMap.get(activeSatCode);
-                Log.w(TAG," recievedMap:"+satelliteBasicDataMap);
+                activeSatDataList = satelliteBasicDataMap.get(mapsActivity.activeSatCode);
+               // Log.w(TAG," recievedMap:"+satelliteBasicDataMap);
                 locateSun();
                 initSatPosition();
             }
@@ -174,6 +174,11 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
     }
 
 
+    /**
+     * This method get sun data from the map that is got from Nasa SSC web service
+     * Then locate the sun at its sub solar point to make day night animation
+     * called from fetchSatDataFromSSE method
+     */
     public void locateSun(){
         ArrayList<SatelliteBasicData> sunDataList = allSatDatFromSSCMap.get("sun");
         long timeDiff = (activeSatDataList.get(1).getTimestamp()-activeSatDataList.get(0).getTimestamp())/1000; //in sec
@@ -198,6 +203,10 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         Log.w(TAG,"subSolarPoint new fetchedData: "+"sun lat:"+lat+" sun lng: "+lng);
     }
 
+    /**
+     * locate the satellite and navigator camera accordingly after satellite data is initialized
+     *  called from fetchSatDataFromSSE method
+     */
     public void initSatPosition(){
 
         startSatAnimation = false;
@@ -236,17 +245,17 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         lastplackmark = GlobeUtils.addSatelliteToRenderableLayer(renderableLayer, activeSatPosition,R.drawable.satellite_one);;
 
         Log.w(TAG,"init: "+startData.getId());
-        if(altitude<2000&& (worldWindow.getNavigator().getAltitude()/1000)<2000 && !startData.getId().equals(prevSatCode)){
+        if(altitude<2000 && (worldWindow.getNavigator().getAltitude()/1000)<2000 && !startData.getId().equals(prevSatCode)){
             Position temp = new Position(lat/3,lng/3,altitude+5000);
             moveCamera(temp,500,"sat");
             new Handler().postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    moveCamera(activeSatPosition,600,"sat");
+                    moveCamera(activeSatPosition,500,"sat");
                 }
             },500);
         }else{
-            moveCamera(activeSatPosition,1100,"sat");
+            moveCamera(activeSatPosition,500,"sat");
         }
 
         new Handler().postDelayed(new Runnable() {
@@ -255,23 +264,25 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
                 startSatAnimation = true;
                 activeSatDataListIdx = -1;
             }
-        },1100);
+        },1050);
 
         Map<String,Object> dataMap = new HashMap<>();
+        dataMap.put("satName",startData.getId());
         dataMap.put("lat", startData.getLat());
         dataMap.put("lng", startData.getLng());
         dataMap.put("height", startData.getHeight());
         dataMap.put("timestamp", startData.getTimestamp());
-        updateUI(dataMap);
+        mapsActivity.updateUI(dataMap);
     }
 
 
+   /*
     public void updateUI(Map<String,Object> data){
         mSatLatTV.setText("Lat:"+String.format("%.3f",data.get("lat") ) );
         mSatLngTV.setText("Lng:"+String.format("%.3f",data.get("lng")) );
         mSatHeightTV.setText("Height:"+String.format("%.2f",data.get("height"))+"km");
         mDateTV.setText("Date:"+ new Date( (long)data.get("timestamp") ));
-    }
+    }*/
 
 
 
@@ -287,13 +298,6 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"MOON",R.drawable.satellite_one);
         //fetch all the data from mainViewModel
         fetchInitialData();
-
-        mMapSwitchButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                NavHostFragment.findNavController(GlobeFragment.this).navigate(R.id.action_globeFragment_to_googleMapFragment);
-            }
-        });
 
         // Create a layer to display the  labels and satellites
         renderableLayer = new RenderableLayer();
@@ -341,6 +345,9 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         activeCameraValueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
+                if(fragmentPaused)
+                    return;
+
                 float percent = animation.getAnimatedFraction();
                 //Log.w(TAG," sat lat percent :"+percent);
                 double lat = (1-percent)*currentCameraLat+percent*position.latitude;
@@ -353,6 +360,7 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
 
                 if(mode.equals("sat")){
                     Map<String,Object> dataMap = new HashMap<>();
+                    dataMap.put("satName",activeSatDataList.get(0).getId());
                     dataMap.put("lat",lat);
                     dataMap.put("lng",lng);
                     dataMap.put("height",altitude);
@@ -361,7 +369,7 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
                     Position currentSatPos = new Position(lat,lng,position.altitude*1000);
                     removeSatellite(lastplackmark);
                     lastplackmark = GlobeUtils.addSatelliteToRenderableLayer(renderableLayer,currentSatPos,R.drawable.satellite_one);
-                    updateUI(dataMap);
+                    mapsActivity.updateUI(dataMap);
                 }
             }
         });
@@ -378,7 +386,7 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         this.worldWindow.onResume(); // resumes a paused rendering thread
 
         // Resume the day-night cycle animation.
-        this.activityPaused = false;
+        this.fragmentPaused = false;
         this.lastFrameTimeNanos = 0;
         Choreographer.getInstance().postFrameCallback(this);
     }
@@ -392,13 +400,27 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         this.worldWindow.onPause(); // pauses the rendering thread
 
         // Stop running the night animation when this activity is paused.
-        this.activityPaused = true;
+        if(activeCameraValueAnimator!=null
+                && activeCameraValueAnimator.isRunning())
+            activeCameraValueAnimator.end();
+
+        Choreographer.getInstance().removeFrameCallback(this);
+        this.fragmentPaused = true;
         this.lastFrameTimeNanos = 0;
+        this.worldWindow.onPause();
+        Log.w(TAG," globe fragment paused and detached ");
     }
 
+
+    /**
+     * provide us every frame which helps to animate the satellite smoothly
+     * idea taken from World wind api example of day night animation
+     * @param frameTimeNanos
+     */
     @Override
     public void doFrame(long frameTimeNanos) {
         if (this.lastFrameTimeNanos != 0) {
+
             // Compute the frame duration in seconds.
             double frameDurationSeconds = (frameTimeNanos - this.lastFrameTimeNanos) * 1.0e-9;
            // double cameraDegrees = (frameDurationSeconds * this.cameraDegreesPerSecond);
@@ -424,12 +446,16 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
             this.getWorldWindow().requestRedraw();
         }
 
-        if (!this.activityPaused) { // stop animating when this Activity is paused
+        // if the fragment is not stopped then call the function again to
+        // continue the animation
+        if (!this.fragmentPaused) {
             Choreographer.getInstance().postFrameCallback(this);
+        }else{
+            Choreographer.getInstance().removeFrameCallback(this);
         }
 
         //after satellite data loaded
-        if(activeSatDataList.size()>0)
+        if(activeSatDataList.size()>0 && !this.fragmentPaused)
         {
             animateSatellite();
         }
@@ -438,6 +464,10 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         this.lastFrameTimeNanos = frameTimeNanos;
     }
 
+
+    /**
+     * animate the satellite and move the camera after certain amount of time
+     */
     public void animateSatellite(){
         long currentTimestamp = System.currentTimeMillis();
         long duration = (currentTimestamp - activeSatDataList.get(0).getTimestamp())/1000;

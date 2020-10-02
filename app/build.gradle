@@ -52,4 +52,7 @@ dependencies {
     //material design ui
     implementation 'com.google.android.material:material:1.2.0'
 
+    //for fused location
+    implementation 'com.google.android.gms:play-services-location:17.0.0'
+
 }

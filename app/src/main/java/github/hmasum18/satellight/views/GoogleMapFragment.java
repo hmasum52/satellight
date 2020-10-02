@@ -1,31 +1,133 @@
 package github.hmasum18.satellight.views;
 
+import android.Manifest;
+import android.animation.ValueAnimator;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.location.Location;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
-import androidx.navigation.fragment.NavHostFragment;
+import androidx.lifecycle.ViewModelProvider;
 
+import android.os.Handler;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.view.ViewPropertyAnimator;
+import android.view.animation.Animation;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.MapStyleOptions;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.android.material.chip.ChipGroup;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import github.hmasum18.satellight.R;
+import github.hmasum18.satellight.models.SatelliteBasicData;
+import github.hmasum18.satellight.utils.GlobeUtils;
+import github.hmasum18.satellight.utils.MapUtils;
+import github.hmasum18.satellight.utils.Utils;
+import github.hmasum18.satellight.viewModel.MainViewModel;
+import gov.nasa.worldwind.geom.Position;
 
-public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
+public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
+
+    private final static int  PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 101;
+    public static final String TAG = "GoogleMapFragment:";
+
+    //for accessing common method of all the fragments
+    MapsActivity mapsActivity;
+
+    //data source
+    private MainViewModel mainViewModel;
+
+    //view
+    private ChipGroup mSatelliteChipGroup;
 
     private GoogleMap mMap;
+    private boolean isLocationPermissionGranted = false;
 
-    private Button mMapSwitchButton;
+    //to get the device location
+    private FusedLocationProviderClient mFusedLocationProviderClient;
+    private LatLng deviceLatLng = null;
+    private LatLngBounds.Builder latLngBuilder = new LatLngBounds.Builder();
+    int[] rawMapStyles = {R.raw.dark_map,R.raw.night_map,R.raw.aubergine_map,R.raw.assassins_creed_map};
+
+    //to show satellite
+    public SatelliteBasicData previousSatData;
+    public SatelliteBasicData currentSatData;
+    private Marker movingSatelliteMarker; //satellite icon as marker
+    private ArrayList<Polyline> drawnPolyLine = new ArrayList<>();
+    
+
+    //data from nasa ssc api
+    ArrayList<String> satCodeList = new ArrayList<>(Arrays.asList(
+            "sun","iss","goes13","noaa19","aqua","cassiope","moon"
+    ));
+    public Map<String, ArrayList<SatelliteBasicData> > allSatDatFromSSCMap = new HashMap<>();
+
+    //for currently tracked satellite
+    public String prevSatCode = "";
+    //public Position activeSatPosition = new Position(0,0,0);
+    public List<SatelliteBasicData> activeSatDataList = new ArrayList<>(); //store the currently active satellite
+    public long timeIntervalBetweenTwoData = 0; //in seconds
+    public int activeSatDataListIdx = -1; //what index data is applicable currently
+    public boolean startSatAnimation = false; //after camera moved to activated satellite position start moving the satellite
+    public ValueAnimator activeSatAnimator;
+    public ViewPropertyAnimator satelliteAnimation;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        if (getArguments() != null) {
+
+        }
+        //get permission from user to access the location info
+        getLocationPermission();
+
+        mapsActivity = (MapsActivity) this.getActivity();
+
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        // Inflate the layout for this fragment
+        View rootView = inflater.inflate(R.layout.fragment_google_map, container, false);
+
+        mSatelliteChipGroup = rootView.findViewById(R.id.googleMapFrag_satelliteCG);
+
+        //init the data source
+        mainViewModel  = new ViewModelProvider(requireActivity()).get(MainViewModel.class);
+
+        return rootView;
+    }
 
     /**
      * get the map fragment and start the MapAsync
@@ -37,23 +139,115 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
         mapFragment.getMapAsync(this);
     }
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
 
-        }
+    /**
+     * fetch all the necessary data from mainViewModel
+     */
+    public void fetchInitialData(){
+        fetchSatDataFromSSC(satCodeList);
     }
 
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
-        View rootView = inflater.inflate(R.layout.fragment_google_map, container, false);
+    /**
+     * name of the function suggest what it does
+     * @param satCodeList
+     */
+    public void fetchSatDataFromSSC(ArrayList<String> satCodeList){
+        //fetch satellite data from nasa SSC
+        String fromTime = Utils.getTimeAsString(System.currentTimeMillis()-(1000*60*10)); //before 10 min of current timestamp
+        String toTime = Utils.getTimeAsString(System.currentTimeMillis()+1000*60*30); //after 30 min of current timestamp
+        Log.w(TAG,fromTime+" && "+toTime);
+        mainViewModel.getLocationOfSatellite(satCodeList,fromTime,toTime).observe(requireActivity(),satelliteBasicDataMap -> {
+            Log.w(TAG,"number of sat data in the map:"+satelliteBasicDataMap.size());
+            if(satelliteBasicDataMap.size()>=7){
+                allSatDatFromSSCMap = satelliteBasicDataMap;
+                activeSatDataList = satelliteBasicDataMap.get(mapsActivity.activeSatCode);
+                Log.w(TAG," recievedMap:"+satelliteBasicDataMap);
 
-        mMapSwitchButton = rootView.findViewById(R.id.googleMapFrag_globleBtn);
+                initSatPosition();
+            }
+        });
+    }
 
-        return rootView;
+    public void initSatPosition(){
+        //make null so that know line is drawn
+        startSatAnimation = false;
+        previousSatData = null;
+        currentSatData = null;
+        if(activeSatAnimator!=null && activeSatAnimator.isRunning()){
+            Log.w(TAG,"Previous satellite animator is removed");
+            activeSatAnimator.end();
+            activeSatAnimator = null;
+        }
+        for (Polyline polyline :
+                drawnPolyLine) {
+            polyline.remove();
+        }
+        drawnPolyLine = new ArrayList<>();
+
+        timeIntervalBetweenTwoData = (activeSatDataList.get(1).getTimestamp()-activeSatDataList.get(0).getTimestamp())/1000; //in sec
+
+        long currentTimestamp = System.currentTimeMillis();
+        long duration = (currentTimestamp - activeSatDataList.get(0).getTimestamp())/1000;
+        Log.w(TAG,"fetchData: Duration:"+duration);
+        double percent = (double)duration/timeIntervalBetweenTwoData;
+
+        int currentIdx = (int)percent;
+        currentIdx = Math.max(currentIdx, 0);
+
+        Log.w(TAG," iniitSat: currentIdx:"+currentIdx);
+        percent -= currentIdx;
+
+        SatelliteBasicData startData =  activeSatDataList.get(currentIdx);
+        SatelliteBasicData secondData = activeSatDataList.get(1+currentIdx);
+
+        double lat = startData.getLat()*(1-percent) + percent*secondData.getLat();
+        double lng = (1-percent)*startData.getLng() + percent*secondData.getLng();
+        double altitude = (1-percent)*startData.getHeight() + percent*secondData.getHeight();
+
+        SatelliteBasicData satelliteBasicData = new SatelliteBasicData(
+                startData.getId(),lat,lng,altitude,System.currentTimeMillis()
+        );
+
+        Log.w(TAG," initial location: "+satelliteBasicData);
+        updateSatelliteLocation(satelliteBasicData,0);
+        long remainingDuration = (long)(timeIntervalBetweenTwoData*(1-percent));
+        updateSatelliteLocation(activeSatDataList.get(currentIdx+1), remainingDuration);
+        activeSatDataListIdx = currentIdx+1;
+
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                startSatAnimation = true;
+                moveSatellite();
+            }
+        },remainingDuration);
+
+
+    }
+
+    /**
+     * This recursive function helps to move the satellite
+     */
+    public void moveSatellite(){
+        //Handler handler = new Handler();
+        if(!startSatAnimation) {
+            return;
+        }
+
+        satelliteAnimation = mapsActivity.googleMapIBTN.animate().scaleX(1.0f).setDuration(timeIntervalBetweenTwoData*1000)
+        .withEndAction(new Runnable() {
+            @Override
+            public void run() {
+                activeSatDataListIdx++;
+                Log.w(TAG," activeSatDataIdx of "+mapsActivity.activeSatCode+":"+activeSatDataListIdx);
+                if(activeSatDataListIdx<activeSatDataList.size()-3){
+                    updateSatelliteLocation(activeSatDataList.get(activeSatDataListIdx),timeIntervalBetweenTwoData );
+                    moveSatellite();
+                }else{
+                    fetchInitialData();
+                }
+            }
+        });
     }
 
     @Override
@@ -61,22 +255,216 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
         super.onViewCreated(view, savedInstanceState);
         //init the map
         initMap();
-
-        mMapSwitchButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                NavHostFragment.findNavController(GoogleMapFragment.this).navigate(R.id.action_googleMapFragment_to_globeFragment);
-            }
-        });
     }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+        mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this.getContext(),rawMapStyles[3]));
+        //mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
 
-        // Add a marker in Sydney and move the camera
-        LatLng bheramara = new LatLng(24.019686, 88.993371);
-        mMap.addMarker(new MarkerOptions().position(bheramara).title("Marker in Sydney"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(bheramara));
+        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"ISS",R.drawable.satellite_one);
+        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"NOAA-19",R.drawable.satellite_one);
+        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"Aqua",R.drawable.satellite_one);
+        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"GOES-13",R.drawable.satellite_one);
+        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"CASSIOPE",R.drawable.satellite_one);
+        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"MOON",R.drawable.satellite_one);
+
+        fetchInitialData();
+    }
+
+    /**
+     * Move the map camera to a certain lat lng
+     * @param latLng
+     * @param zoom
+     */
+    public void moveCamera(LatLng latLng, float zoom){
+        //  Log.w(TAG,"moveCamera: moving camera to: lat: "+latLng.latitude+" , lng: "+latLng.longitude);
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng,zoom));
+    }
+
+    /**
+     * add satellite icon as marker at a certain lat lng
+     * @param latLng
+     * @return
+     */
+    private Marker addSatelliteAndGet(LatLng latLng){
+        BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(MapUtils.getSatelliteBitmap(this.getContext()));
+        return mMap.addMarker(new MarkerOptions().position(latLng).flat(true).icon(bitmapDescriptor));
+    }
+
+    public void animateCamera(LatLng latLng){
+        CameraPosition cameraPosition = new CameraPosition.Builder().target(latLng).zoom(0f).build();
+        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+    }
+
+    /**
+     * update the satellite location which help us to achieve the satellite animation
+     * @param satData is the lat lng where the satellite will move to
+     */
+    private void updateSatelliteLocation(SatelliteBasicData satData,long duration){
+
+        if(movingSatelliteMarker == null){
+            movingSatelliteMarker = addSatelliteAndGet(new LatLng(satData.getLat(),satData.getLng()));
+        }
+
+
+        if(previousSatData == null){
+            currentSatData = satData;
+            previousSatData = currentSatData;
+            movingSatelliteMarker.setPosition(new LatLng(satData.getLat(),satData.getLng()));
+            movingSatelliteMarker.setAnchor(0.4f,0.4f);
+
+            Map<String,Object> dataMap = new HashMap<>();
+            dataMap.put("satName",mapsActivity.activeSatCode);
+            dataMap.put("lat", satData.getLat());
+            dataMap.put("lng", satData.getLng());
+            dataMap.put("height", satData.getHeight());
+            dataMap.put("timestamp", System.currentTimeMillis());
+            mapsActivity.updateUI(dataMap);
+
+            animateCamera(new LatLng(satData.getLat(),satData.getLng()));
+            //moveCamera(latLng,0f);
+        }else{
+            previousSatData = currentSatData;
+            currentSatData = satData;
+            movingSatelliteMarker.setPosition(new LatLng(satData.getLat(),satData.getLng()));
+            movingSatelliteMarker.setAnchor(0.4f,0.4f);
+
+            activeSatAnimator = MapUtils.satelliteAnimation();
+            activeSatAnimator.setDuration(duration*1000);
+            activeSatAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                @Override
+                public void onAnimationUpdate(ValueAnimator animation) {
+                    if(currentSatData != null && currentSatData != null){
+
+                        if(startSatAnimation){
+                            double multiplier = animation.getAnimatedFraction();
+
+                            //ease in the value
+                            LatLng nextLocation = new LatLng(
+                                    multiplier * currentSatData.getLat() + (1 - multiplier) * previousSatData.getLat() ,
+                                    multiplier * currentSatData.getLng() + (1 - multiplier) * previousSatData.getLng()
+                            );
+
+                            double nextHeight = multiplier * currentSatData.getHeight() + (1 - multiplier) * previousSatData.getHeight();
+
+                            movingSatelliteMarker.setPosition(nextLocation);
+                            movingSatelliteMarker.setAnchor(0.5f,0.5f);
+
+                            Map<String,Object> dataMap = new HashMap<>();
+                            dataMap.put("satName",mapsActivity.activeSatCode);
+                            dataMap.put("lat", nextLocation.latitude);
+                            dataMap.put("lng", nextLocation.longitude);
+                            dataMap.put("height", nextHeight);
+                            dataMap.put("timestamp", System.currentTimeMillis());
+                            mapsActivity.updateUI(dataMap);
+
+                            //animateCamera(nextLocation);
+                            // moveCamera(nextLocation,0f);
+                            addLineBetweenTwoPoints(new LatLng(previousSatData.getLat(),previousSatData.getLng()),nextLocation);
+                        }
+                    }
+                }
+            });
+            activeSatAnimator.start();
+        }
+    }
+
+
+
+    public void addLineBetweenTwoPoints(final LatLng from, final LatLng to){
+        final PolylineOptions polylineOptions = new PolylineOptions();
+        polylineOptions.add(from);
+        polylineOptions.add(to);
+        polylineOptions.width(8f);
+        polylineOptions.color(Color.RED);
+
+        Polyline polyline = mMap.addPolyline(polylineOptions);
+        drawnPolyLine.add(polyline);
+        // animatePolyLineBetweenTwoPoints(polyline,from,to);
+    }
+
+    public void getDeviceLocation() {
+        // Construct a FusedLocationProviderClient.
+        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this.getActivity());
+
+        /**
+         * Get the best and most recent location of the device, which may be null in rare
+         * cases when a location is not available.
+         */
+        try {
+            if (isLocationPermissionGranted) {
+                Task<Location> locationResult = mFusedLocationProviderClient.getLastLocation();
+                locationResult.addOnCompleteListener(new OnCompleteListener<Location>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Location> task) {
+                        if(task.isSuccessful()){
+                            Log.w(TAG,"getDeviceLocation onComplete: location found");
+                            Location location = task.getResult();
+                            LatLng currentLocation = new LatLng(	location.getLatitude(),location.getLongitude() );
+                            deviceLatLng = currentLocation;
+                            latLngBuilder.include(currentLocation);
+                            moveCamera(currentLocation,15);
+                            MarkerOptions markerOptions = new MarkerOptions().position(deviceLatLng).title("myLocation");
+                            mMap.addMarker(markerOptions);
+                        }else{
+                            Log.w(TAG,"getDeviceLocation onComplete: location not found");
+                        }
+                    }
+                });
+            }
+        }catch (SecurityException e){
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * get the user permission to access device location
+     */
+    public void getLocationPermission(){
+        if(ContextCompat.checkSelfPermission(
+                this.getContext(), Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED
+        ){
+            isLocationPermissionGranted = true;
+        } else {
+            //get the location permission from user
+            ActivityCompat.requestPermissions(this.getActivity(),
+                    new String[] {Manifest.permission.ACCESS_FINE_LOCATION},
+                    PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        isLocationPermissionGranted = false;
+        switch (requestCode){
+            case PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION:
+                if(grantResults.length>0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    isLocationPermissionGranted = true;
+                }
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+    }
+
+    /**
+     * Pauses the WorldWindow's rendering thread
+     */
+    @Override
+    public void onPause() {
+        super.onPause();
+        satelliteAnimation.cancel();
+    }
+
+
+    @Override
+    public void onDetach() {
+        super.onDetach();
     }
 }
