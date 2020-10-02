@@ -32,6 +32,7 @@ public class MapUtils {
         return Bitmap.createScaledBitmap(bitmap, 150 , 150, false);
     }
 
+
     public static ValueAnimator polyLineAnimator(){
         ValueAnimator valueAnimator = ValueAnimator.ofInt(0,100);
         valueAnimator.setInterpolator(new LinearInterpolator());

@@ -3,7 +3,11 @@ package github.hmasum18.satellight.views;
 import android.Manifest;
 import android.animation.ValueAnimator;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.os.Bundle;
 
@@ -12,6 +16,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
 import android.os.Handler;
@@ -22,6 +27,9 @@ import android.view.ViewGroup;
 import android.view.ViewPropertyAnimator;
 import android.view.animation.Animation;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -50,6 +58,8 @@ import java.util.Map;
 
 import github.hmasum18.satellight.R;
 import github.hmasum18.satellight.models.SatelliteBasicData;
+import github.hmasum18.satellight.models.SatelliteData;
+import github.hmasum18.satellight.models.TrajectoryData;
 import github.hmasum18.satellight.utils.GlobeUtils;
 import github.hmasum18.satellight.utils.MapUtils;
 import github.hmasum18.satellight.utils.Utils;
@@ -80,22 +90,21 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
     int[] rawMapStyles = {R.raw.dark_map,R.raw.night_map,R.raw.aubergine_map,R.raw.assassins_creed_map};
 
     //to show satellite
-    public SatelliteBasicData previousSatData;
-    public SatelliteBasicData currentSatData;
+    public TrajectoryData previousSatData;
+    public TrajectoryData currentSatData;
     private Marker movingSatelliteMarker; //satellite icon as marker
     private ArrayList<Polyline> drawnPolyLine = new ArrayList<>();
     
 
     //data from nasa ssc api
     ArrayList<String> satCodeList = new ArrayList<>(Arrays.asList(
-            "sun","iss","goes13","noaa19","aqua","cassiope","moon"
+            "sun","moon"
     ));
-    public Map<String, ArrayList<SatelliteBasicData> > allSatDatFromSSCMap = new HashMap<>();
+
 
     //for currently tracked satellite
     public String prevSatCode = "";
-    //public Position activeSatPosition = new Position(0,0,0);
-    public List<SatelliteBasicData> activeSatDataList = new ArrayList<>(); //store the currently active satellite
+    public List<TrajectoryData> activeSatDataList = new ArrayList<>(); //store the currently active satellite
     public long timeIntervalBetweenTwoData = 0; //in seconds
     public int activeSatDataListIdx = -1; //what index data is applicable currently
     public boolean startSatAnimation = false; //after camera moved to activated satellite position start moving the satellite
@@ -158,12 +167,10 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
         Log.w(TAG,fromTime+" && "+toTime);
         mainViewModel.getLocationOfSatellite(satCodeList,fromTime,toTime).observe(requireActivity(),satelliteBasicDataMap -> {
             Log.w(TAG,"number of sat data in the map:"+satelliteBasicDataMap.size());
-            if(satelliteBasicDataMap.size()>=7){
-                allSatDatFromSSCMap = satelliteBasicDataMap;
-                activeSatDataList = satelliteBasicDataMap.get(mapsActivity.activeSatCode);
-                Log.w(TAG," recievedMap:"+satelliteBasicDataMap);
-
-                initSatPosition();
+            if(satelliteBasicDataMap.size()>=2){
+                mapsActivity.allSatDatFromSSCMap = satelliteBasicDataMap;
+               // Log.w(TAG," recievedMap:"+satelliteBasicDataMap);
+                getDeviceLocation();
             }
         });
     }
@@ -197,19 +204,18 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
         Log.w(TAG," iniitSat: currentIdx:"+currentIdx);
         percent -= currentIdx;
 
-        SatelliteBasicData startData =  activeSatDataList.get(currentIdx);
-        SatelliteBasicData secondData = activeSatDataList.get(1+currentIdx);
+        TrajectoryData startData =  activeSatDataList.get(currentIdx);
+        TrajectoryData secondData = activeSatDataList.get(1+currentIdx);
 
         double lat = startData.getLat()*(1-percent) + percent*secondData.getLat();
         double lng = (1-percent)*startData.getLng() + percent*secondData.getLng();
         double altitude = (1-percent)*startData.getHeight() + percent*secondData.getHeight();
 
-        SatelliteBasicData satelliteBasicData = new SatelliteBasicData(
-                startData.getId(),lat,lng,altitude,System.currentTimeMillis()
-        );
+        TrajectoryData trajectoryData = new TrajectoryData(
+                startData.getShortName(),lat,lng,altitude, System.currentTimeMillis());
 
-        Log.w(TAG," initial location: "+satelliteBasicData);
-        updateSatelliteLocation(satelliteBasicData,0);
+        Log.w(TAG," initial location: "+trajectoryData);
+        updateSatelliteLocation(trajectoryData,0);
         long remainingDuration = (long)(timeIntervalBetweenTwoData*(1-percent));
         updateSatelliteLocation(activeSatDataList.get(currentIdx+1), remainingDuration);
         activeSatDataListIdx = currentIdx+1;
@@ -221,8 +227,6 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
                 moveSatellite();
             }
         },remainingDuration);
-
-
     }
 
     /**
@@ -262,13 +266,9 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
         mMap = googleMap;
         mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this.getContext(),rawMapStyles[3]));
         //mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+        mMap.getUiSettings().setZoomControlsEnabled(true);
 
-        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"ISS",R.drawable.satellite_one);
-        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"NOAA-19",R.drawable.satellite_one);
-        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"Aqua",R.drawable.satellite_one);
-        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"GOES-13",R.drawable.satellite_one);
-        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"CASSIOPE",R.drawable.satellite_one);
-        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"MOON",R.drawable.satellite_one);
+        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"moon",R.drawable.ic_moon);
 
         fetchInitialData();
     }
@@ -288,9 +288,27 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
      * @param latLng
      * @return
      */
-    private Marker addSatelliteAndGet(LatLng latLng){
-        BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(MapUtils.getSatelliteBitmap(this.getContext()));
+    private Marker addSatelliteAndGet(LatLng latLng,String name){
+        BitmapDescriptor bitmapDescriptor1 = BitmapDescriptorFactory.fromBitmap(MapUtils.getSatelliteBitmap(this.getContext()));
+        BitmapDescriptor bitmapDescriptor2 = getMarkerIconFromDrawable(GlobeUtils.satelliteIconMap.get(name));
+
+        BitmapDescriptor bitmapDescriptor = bitmapDescriptor2!=null?  bitmapDescriptor2 : bitmapDescriptor1;
         return mMap.addMarker(new MarkerOptions().position(latLng).flat(true).icon(bitmapDescriptor));
+    }
+
+    private BitmapDescriptor getMarkerIconFromDrawable(Drawable drawable) {
+        if(drawable == null){
+            Log.w(TAG," drawable is null");
+            return  null;
+        }
+        Log.w(TAG," drawable is not null");
+
+        Canvas canvas = new Canvas();
+        Bitmap bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+        canvas.setBitmap(bitmap);
+        drawable.setBounds(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
+        drawable.draw(canvas);
+        return BitmapDescriptorFactory.fromBitmap(bitmap);
     }
 
     public void animateCamera(LatLng latLng){
@@ -302,12 +320,10 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
      * update the satellite location which help us to achieve the satellite animation
      * @param satData is the lat lng where the satellite will move to
      */
-    private void updateSatelliteLocation(SatelliteBasicData satData,long duration){
-
-        if(movingSatelliteMarker == null){
-            movingSatelliteMarker = addSatelliteAndGet(new LatLng(satData.getLat(),satData.getLng()));
-        }
-
+    private void updateSatelliteLocation(TrajectoryData satData,long duration){
+        if(movingSatelliteMarker!=null)
+            movingSatelliteMarker.remove();
+        movingSatelliteMarker = addSatelliteAndGet(new LatLng(satData.getLat(), satData.getLng()),satData.getShortName());
 
         if(previousSatData == null){
             currentSatData = satData;
@@ -369,7 +385,10 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
             });
             activeSatAnimator.start();
         }
+
+
     }
+
 
 
 
@@ -385,10 +404,12 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
         // animatePolyLineBetweenTwoPoints(polyline,from,to);
     }
 
+    /**
+     * get the deviceLocation and then call for satellite data
+     */
     public void getDeviceLocation() {
         // Construct a FusedLocationProviderClient.
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this.getActivity());
-
         /**
          * Get the best and most recent location of the device, which may be null in rare
          * cases when a location is not available.
@@ -402,12 +423,32 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
                         if(task.isSuccessful()){
                             Log.w(TAG,"getDeviceLocation onComplete: location found");
                             Location location = task.getResult();
-                            LatLng currentLocation = new LatLng(	location.getLatitude(),location.getLongitude() );
-                            deviceLatLng = currentLocation;
-                            latLngBuilder.include(currentLocation);
-                            moveCamera(currentLocation,15);
-                            MarkerOptions markerOptions = new MarkerOptions().position(deviceLatLng).title("myLocation");
-                            mMap.addMarker(markerOptions);
+                            if(location!=null)
+                                deviceLatLng = new LatLng(	location.getLatitude(),location.getLongitude() );
+                            else return;
+                            Log.w(TAG," requesting data from "+deviceLatLng);
+                            mainViewModel.getAllSatelliteData(System.currentTimeMillis()-1000*60*5 //before 5 minutes
+                                    ,System.currentTimeMillis()+1000*60*20 //after 20 minutes
+                                    ,deviceLatLng).observe(GoogleMapFragment.this.getViewLifecycleOwner(),stringSatelliteDataMap -> {
+
+                                mapsActivity.allSatelliteData = stringSatelliteDataMap;
+                                activeSatDataList = mapsActivity.allSatDatFromSSCMap.get(mapsActivity.activeSatCode);
+                                if(activeSatDataList == null)
+                                    activeSatDataList = stringSatelliteDataMap.get(mapsActivity.activeSatCode).getTrajectoryDataList();
+
+                                for (Map.Entry<String, SatelliteData> temp :
+                                        stringSatelliteDataMap.entrySet()) {
+                                    GlobeUtils.addSatelliteToChipGroup(GoogleMapFragment.this, mSatelliteChipGroup,
+                                            temp.getKey(), //shortName
+                                            temp.getValue().getIconUrl()
+                                            );
+                                }
+
+                                mapsActivity.progressBar.setVisibility(View.GONE);
+                                mapsActivity.mainActvConstrainLayout.setVisibility(View.VISIBLE);
+
+                                initSatPosition();
+                            });
                         }else{
                             Log.w(TAG,"getDeviceLocation onComplete: location not found");
                         }
@@ -453,18 +494,10 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
         super.onResume();
     }
 
-    /**
-     * Pauses the WorldWindow's rendering thread
-     */
     @Override
     public void onPause() {
         super.onPause();
+        if(satelliteAnimation != null)
         satelliteAnimation.cancel();
-    }
-
-
-    @Override
-    public void onDetach() {
-        super.onDetach();
     }
 }

@@ -14,7 +14,7 @@ public class OurApi {
     private static OurApi nasaSSCApiInstance;
     private OurApi(){
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://us-central1-smsapi-3b6ac.cloudfunctions.net/getTrajectory/")
+                .baseUrl("https://us-central1-smsapi-3b6ac.cloudfunctions.net/")
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
 
@@ -31,5 +31,5 @@ public class OurApi {
         return nasaSSCApiInstance;
     }
 
-    public OurApiDao nasaSSEApiDao(){return ourApiDao;};
+    public OurApiDao ourApiDao() {return ourApiDao;};
 }

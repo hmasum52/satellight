@@ -6,6 +6,7 @@ import android.util.Log;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.google.android.gms.maps.model.LatLng;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -35,8 +36,13 @@ import java.util.TimeZone;
 
 import github.hmasum18.satellight.dataSources.NasaSSCApi;
 import github.hmasum18.satellight.dataSources.NasaSSCApiDao;
+import github.hmasum18.satellight.dataSources.OurApi;
+import github.hmasum18.satellight.dataSources.OurApiDao;
 import github.hmasum18.satellight.models.SatelliteBasicData;
+import github.hmasum18.satellight.models.SatelliteData;
+import github.hmasum18.satellight.models.TrajectoryData;
 import github.hmasum18.satellight.utils.Utils;
+import github.hmasum18.satellight.views.vr.Satellite;
 import gov.nasa.worldwind.geom.Location;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
@@ -47,10 +53,14 @@ public class MainRepository {
 
     public static final String TAG = "MainRepo:";
     private NasaSSCApiDao nasaSSCApiDao ;
+    private OurApiDao ourApiDao;
 
     //store basic data of a satellite
-    private  Map<String,ArrayList<SatelliteBasicData>> satMap = new HashMap<>();
-    private  MutableLiveData<Map<String,ArrayList<SatelliteBasicData>> > satBasicDataMutableMap = new MutableLiveData<>();
+    private  Map<String,ArrayList<TrajectoryData>> satMap = new HashMap<>();
+    //shortName, ArrayList
+    private  MutableLiveData<Map<String,ArrayList<TrajectoryData>> > satBasicDataMutableMap = new MutableLiveData<>();
+    //shortName, SatellitedData
+    private  MutableLiveData<Map<String,SatelliteData> > satelliteDataMutableMap = new MutableLiveData<>();
 
     //for sub solar points ..The SubSolarPoint on a planet is the point at which its sun is perceived to be directly overhead
     private MutableLiveData<Location> currentSubSolarPointLocation = new MutableLiveData<>();
@@ -59,14 +69,23 @@ public class MainRepository {
     public MainRepository() {
         NasaSSCApi nasaSSCApi = NasaSSCApi.getInstance();
         nasaSSCApiDao = nasaSSCApi.nasaSSEApiDao();
+        OurApi ourApi = OurApi.getInstance();
+        ourApiDao = ourApi.ourApiDao();
     }
 
-    public LiveData<Map<String,ArrayList<SatelliteBasicData>> > getLocationOfSatellites(ArrayList<String> satCodeList, String fromTime, String toTime){
+    public LiveData<Map<String,ArrayList<TrajectoryData>> > getLocationOfSatelliteFromSSC(
+            ArrayList<String> satCodeList, String fromTime, String toTime){
         if(satBasicDataMutableMap.getValue() == null)
         for (String satCode : satCodeList) {
             callSatelliteDataFromSSCByName(satCode, fromTime, toTime);
         }
         return satBasicDataMutableMap;
+    }
+
+    public LiveData<Map<String,SatelliteData>> getAllSatelliteData(long timestampBegin,long timestampEnd,LatLng userLocation){
+        if(satelliteDataMutableMap.getValue() == null) //if no data is fetched yet then
+            callSatelliteInfoFromOurApi(timestampBegin,timestampEnd,userLocation);
+        return satelliteDataMutableMap;
     }
 
     private void  callSatelliteDataFromSSCByName(String satCode,String fromTime,String toTime){
@@ -120,7 +139,7 @@ public class MainRepository {
             JSONArray radialLengths = data.optJSONArray("RadialLength").optJSONArray(1);
 
 
-            ArrayList<SatelliteBasicData> satelliteBasicDataArrayList = new ArrayList<>();
+            ArrayList<TrajectoryData> trajectoryDataArrayList = new ArrayList<>();
             for (int j = 0; j < latitudes.length(); j++) {
                 double height = radialLengths.optDouble(j) - getEarthRadiusAt(latitudes.optDouble(j));
                 try {
@@ -134,22 +153,23 @@ public class MainRepository {
                     SimpleDateFormat localFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.sssZ");
                     String localTimeString = localFormat.format(new Date(utcDateTime.getTime()));
                     Date localDateTime = localFormat.parse(localTimeString);
-                    Log.w(TAG,"localTime:"+localTimeString);
+                    //Log.w(TAG,"localTime:"+localTimeString);
 
-                    SatelliteBasicData satelliteBasicData = new SatelliteBasicData(satCode,lat,lng,height, localDateTime.getTime());
-                    Log.w(TAG,"data: "+satelliteBasicData.toString());
+                    TrajectoryData trajectoryData = new TrajectoryData(
+                            satCode,lat,lng ,height, localDateTime.getTime());
+                   // Log.w(TAG,"data: "+satelliteBasicData.toString());
 
-                    satelliteBasicDataArrayList.add(satelliteBasicData);
+                    trajectoryDataArrayList.add(trajectoryData);
 
                 } catch (ParseException e) {
                     e.printStackTrace();
                 }
             }
-            Log.w(TAG," total size of "+satCode+":"+satelliteBasicDataArrayList.size());
-            satMap.put(satCode,satelliteBasicDataArrayList);
+            Log.w(TAG," total size of "+satCode+":"+trajectoryDataArrayList.size());
+            satMap.put(satCode,trajectoryDataArrayList);
             //aSatelliteBasicDataMutableList.postValue(satelliteBasicDataArrayList);
         }
-        if(satMap.size()>=5){
+        if(satMap.size()>=2){
             satBasicDataMutableMap.postValue(satMap);
         }
 
@@ -172,6 +192,112 @@ public class MainRepository {
         return Math.sqrt(nominator/denominator); //calculate earth radius and return
     }
 
+    private void callSatelliteInfoFromOurApi(long timestampBegin,long timestampEnd, LatLng latLng){
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("type","all_trajectory");
+        jsonObject.addProperty("freq",20000);
+        jsonObject.addProperty("lat",latLng.latitude);
+        jsonObject.addProperty("lng",latLng.longitude);
+        jsonObject.addProperty("alt",0);
+        jsonObject.addProperty("timestamp_begin",timestampBegin);
+        jsonObject.addProperty("timestamp_end",timestampEnd);
+        Call<ResponseBody> call = ourApiDao.getAllSatelliteInfo(jsonObject);
+
+        call.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                if(response.isSuccessful()){
+                    try{
+                        Log.w(TAG,"our api call success");
+                        String responseJsonObject = response.body().string();
+                        JSONArray responseJson = new JSONArray(responseJsonObject);
+                        Log.w(TAG,"our api response"+responseJsonObject);
+                        parseSatelliteData(responseJson);
+                    }catch (  JSONException | IOException e) {
+                        e.printStackTrace();
+                    }
+
+                }else{
+                    Log.w(TAG,"satellite data call is not successful "+response.code());
+                }
+            }
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                Log.w(TAG,"failed "+t.getMessage());
+            }
+        });
+    }
+
+    private void parseSatelliteData(JSONArray jsonArray) {
+        Map<String,SatelliteData> stringSatelliteDataMap = new HashMap<>();
+        for (int i = 0; i < jsonArray.length(); i++) {
+            JSONObject satelliteJsonObject = jsonArray.optJSONObject(i);
+            SatelliteData satelliteData =  parseSatelliteInfo(satelliteJsonObject.optJSONObject("info"));
+            ArrayList<TrajectoryData> trajectoryDataArrayList
+                    = parseSatelliteTrajectory(satelliteJsonObject.optJSONArray("trajectory"),satelliteData.getShortName() );
+            satelliteData.setTrajectoryDataList(trajectoryDataArrayList);
+            stringSatelliteDataMap.put(satelliteData.getShortName(),satelliteData);
+        }
+        satelliteDataMutableMap.postValue(stringSatelliteDataMap);
+    }
+
+    private SatelliteData parseSatelliteInfo(JSONObject info) {
+        SatelliteData satelliteData = new SatelliteData();
+        satelliteData.setColor(info.optString("color"));
+        satelliteData.setType(info.optString("type"));
+        satelliteData.setLaunchDate(info.optString("launch_date"));
+        satelliteData.setMissionDuration(info.optString("mission_duration"));
+        satelliteData.setLaunchMass(info.optString("launch_mass"));
+        satelliteData.setGeoStationary(info.optBoolean("isGeoStationary"));
+        satelliteData.setTleLine1(info.optString("tle_line1"));
+        satelliteData.setTleLine2(info.optString("tle_line2"));
+        satelliteData.setFullName(info.optString("name"));
+        satelliteData.setShortName(info.optString("sat_name"));
+        satelliteData.setCountryName(info.optString("country_name"));
+        satelliteData.setCountryFlagLink(info.optString("country_flag"));
+        satelliteData.setIconUrl(info.optString("icon_url"));
+
+        ArrayList<String> temp = new ArrayList<>();
+        JSONArray jsonArray = info.optJSONArray("real_images");
+        for (int i = 0; i < jsonArray.length(); i++) {
+            temp.add(jsonArray.optString(i));
+        }
+        satelliteData.setRealImages(temp);
+
+        temp = new ArrayList<>();
+        jsonArray = info.optJSONArray("use_cases");
+        for (int i = 0; i < jsonArray.length(); i++) {
+            temp.add(jsonArray.optString(i));
+        }
+        satelliteData.setUseCases(temp);
+
+        satelliteData.setDescription(info.optString("description"));
+
+        return satelliteData;
+    }
+
+    private ArrayList<TrajectoryData> parseSatelliteTrajectory(JSONArray trajectory,String shortName) {
+        ArrayList<TrajectoryData> trajectoryDataArrayList = new ArrayList<>();
+       // Log.w(TAG,shortName+":"+trajectory.toString());
+        for (int i = 0; i < trajectory.length(); i++) {
+            JSONObject object = trajectory.optJSONObject(i);
+            TrajectoryData trajectoryData = new TrajectoryData(
+                    shortName,
+                    object.optDouble("lat"),
+                    object.optDouble("lng"),
+                    object.optDouble("elevation"),
+                    object.optDouble("azimuth"),
+                    object.optDouble("range"),
+                    object.optDouble("height"),
+                    object.optDouble("velocity"),
+                    object.optLong("timestamp")
+            );
+            trajectoryDataArrayList.add(trajectoryData);
+        }
+       // Log.w(TAG,shortName+"\n"+trajectoryDataArrayList);
+
+        return trajectoryDataArrayList;
+    }
 
 
 }

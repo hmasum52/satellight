@@ -29,6 +29,8 @@ import java.util.Map;
 import github.hmasum18.satellight.R;
 import github.hmasum18.satellight.experimental.AtmosphereLayer;
 import github.hmasum18.satellight.models.SatelliteBasicData;
+import github.hmasum18.satellight.models.SatelliteData;
+import github.hmasum18.satellight.models.TrajectoryData;
 import github.hmasum18.satellight.utils.GlobeUtils;
 import github.hmasum18.satellight.utils.Utils;
 import github.hmasum18.satellight.viewModel.MainViewModel;
@@ -38,12 +40,19 @@ import gov.nasa.worldwind.WorldWindow;
 import gov.nasa.worldwind.geom.Location;
 import gov.nasa.worldwind.geom.Offset;
 import gov.nasa.worldwind.geom.Position;
+import gov.nasa.worldwind.geom.Sector;
 import gov.nasa.worldwind.layer.BackgroundLayer;
 import gov.nasa.worldwind.layer.BlueMarbleLandsatLayer;
+import gov.nasa.worldwind.layer.BlueMarbleLayer;
 import gov.nasa.worldwind.layer.RenderableLayer;
 import gov.nasa.worldwind.render.Color;
+import gov.nasa.worldwind.render.ImageOptions;
+import gov.nasa.worldwind.render.ImageSource;
+import gov.nasa.worldwind.render.RenderContext;
+import gov.nasa.worldwind.render.Renderable;
 import gov.nasa.worldwind.shape.Label;
 import gov.nasa.worldwind.shape.Placemark;
+import gov.nasa.worldwind.shape.SurfaceImage;
 import gov.nasa.worldwind.shape.TextAttributes;
 
 
@@ -81,25 +90,24 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
     ArrayList<String> satCodeList = new ArrayList<>(Arrays.asList(
             "sun","iss","goes13","noaa19","aqua","cassiope","moon"
     ));
-    public  Map<String, ArrayList<SatelliteBasicData> > allSatDatFromSSCMap = new HashMap<>();
+   // public  Map<String, ArrayList<TrajectoryData> > allSatDatFromSSCMap = new HashMap<>();
 
     //for currently tracked satellite
     public String prevSatCode = "";
     public Position activeSatPosition = new Position(0,0,0);
-    public List<SatelliteBasicData> activeSatDataList = new ArrayList<>(); //store the currently active satellite
+    public List<TrajectoryData> activeSatDataList = new ArrayList<>(); //store the currently active satellite
     public long timeIntervalBetweenTwoData = 0; //in seconds
     public int activeSatDataListIdx = -1; //what index data is applicable currently
     public boolean startSatAnimation = false; //after camera moved to activated satellite position start moving the satellite
     public ValueAnimator activeCameraValueAnimator; //move the camera to animatedly
-
-
 
     /**
      * Creates a new WorldWindow (GLSurfaceView) object.
      */
     public WorldWindow createWorldWindow(){
         this.worldWindow = new WorldWindow(getContext());
-        worldWindow.getLayers().addLayer(new BackgroundLayer());
+
+        worldWindow.getLayers().addLayer(new BlueMarbleLayer());
         worldWindow.getLayers().addLayer(new BlueMarbleLandsatLayer());
         return worldWindow;
     }
@@ -134,12 +142,6 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         // Add the WorldWindow view object to the layout that was reserved for the globe.
         globeLayout.addView(this.createWorldWindow());
 
-       /* mSatLatTV = rootView.findViewById(R.id.globeFrag_latTV);
-        mSatLngTV = rootView.findViewById(R.id.globeFrag_lngTV);
-        mSatHeightTV = rootView.findViewById(R.id.globeFrag_heightTV);
-        mSatSpeedTV = rootView.findViewById(R.id.globeFrag_speedTV);
-        mDateTV = rootView.findViewById(R.id.globeFrag_dateTV);*/
-
         mSatelliteChipGroup = rootView.findViewById(R.id.globeFrag_satelliteCG);
 
         return rootView;
@@ -149,28 +151,19 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
      * fetch all the necessary data from mainViewModel
      */
     public void fetchInitialData(){
-       fetchSatDataFromSSC(satCodeList);
-    }
+        activeSatDataList = mapsActivity.allSatDatFromSSCMap.get(mapsActivity.activeSatCode);
+        if(activeSatDataList == null)
+            activeSatDataList = mapsActivity.allSatelliteData.get(mapsActivity.activeSatCode).getTrajectoryDataList();
 
-    /**
-     * name of the function suggest what it does
-     * @param satCodeList
-     */
-    public void fetchSatDataFromSSC(ArrayList<String> satCodeList){
-        //fetch satellite data from nasa SSC
-        String fromTime = Utils.getTimeAsString(System.currentTimeMillis()-(1000*60*10)); //before 10 min of current timestamp
-        String toTime = Utils.getTimeAsString(System.currentTimeMillis()+1000*60*30); //after 30 min of current timestamp
-        Log.w(TAG,fromTime+" && "+toTime);
-        mainViewModel.getLocationOfSatellite(satCodeList,fromTime,toTime).observe(getViewLifecycleOwner(),satelliteBasicDataMap -> {
-            Log.w(TAG,"number of sat data in the map:"+satelliteBasicDataMap.size());
-            if(satelliteBasicDataMap.size()>=7){
-                allSatDatFromSSCMap = satelliteBasicDataMap;
-                activeSatDataList = satelliteBasicDataMap.get(mapsActivity.activeSatCode);
-               // Log.w(TAG," recievedMap:"+satelliteBasicDataMap);
-                locateSun();
-                initSatPosition();
-            }
-        });
+        for (Map.Entry<String, SatelliteData> temp :
+                mapsActivity.allSatelliteData.entrySet()) {
+            GlobeUtils.addSatelliteToChipGroup(this, mSatelliteChipGroup,
+                    temp.getKey()
+            );
+        }
+
+        locateSun();
+        initSatPosition();
     }
 
 
@@ -180,8 +173,8 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
      * called from fetchSatDataFromSSE method
      */
     public void locateSun(){
-        ArrayList<SatelliteBasicData> sunDataList = allSatDatFromSSCMap.get("sun");
-        long timeDiff = (activeSatDataList.get(1).getTimestamp()-activeSatDataList.get(0).getTimestamp())/1000; //in sec
+        ArrayList<TrajectoryData> sunDataList = mapsActivity.allSatDatFromSSCMap.get("sun");
+        long timeDiff = (sunDataList.get(1).getTimestamp()-sunDataList.get(0).getTimestamp())/1000; //in sec
 
         long currentTimestamp = System.currentTimeMillis();
         long duration = (currentTimestamp - sunDataList.get(0).getTimestamp())/1000;
@@ -193,8 +186,8 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         Log.w(TAG," init sun position : currentIdx:"+currentIdx);
         percent -= currentIdx;
 
-        SatelliteBasicData startData =  sunDataList.get(currentIdx);
-        SatelliteBasicData secondData = sunDataList.get(1+currentIdx);
+        TrajectoryData startData =  sunDataList.get(currentIdx);
+        TrajectoryData secondData = sunDataList.get(1+currentIdx);
 
         double lat = startData.getLat()*(1-percent) + percent*secondData.getLat();
         double lng = (1-percent)*startData.getLng() + percent*secondData.getLng();
@@ -231,8 +224,8 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         Log.w(TAG," iniitSat: currentIdx:"+currentIdx);
         percent -= currentIdx;
 
-        SatelliteBasicData startData =  activeSatDataList.get(currentIdx);
-        SatelliteBasicData secondData = activeSatDataList.get(1+currentIdx);
+        TrajectoryData startData =  activeSatDataList.get(currentIdx);
+        TrajectoryData secondData = activeSatDataList.get(1+currentIdx);
 
         double lat = startData.getLat()*(1-percent) + percent*secondData.getLat();
         double lng = (1-percent)*startData.getLng() + percent*secondData.getLng();
@@ -244,8 +237,8 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         }
         lastplackmark = GlobeUtils.addSatelliteToRenderableLayer(renderableLayer, activeSatPosition,R.drawable.satellite_one);;
 
-        Log.w(TAG,"init: "+startData.getId());
-        if(altitude<2000 && (worldWindow.getNavigator().getAltitude()/1000)<2000 && !startData.getId().equals(prevSatCode)){
+        Log.w(TAG,"init: "+startData.getShortName());
+        if(altitude<2000 && (worldWindow.getNavigator().getAltitude()/1000)<2000 && !startData.getShortName().equals(prevSatCode)){
             Position temp = new Position(lat/3,lng/3,altitude+5000);
             moveCamera(temp,500,"sat");
             new Handler().postDelayed(new Runnable() {
@@ -267,7 +260,7 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         },1050);
 
         Map<String,Object> dataMap = new HashMap<>();
-        dataMap.put("satName",startData.getId());
+        dataMap.put("satName",startData.getShortName());
         dataMap.put("lat", startData.getLat());
         dataMap.put("lng", startData.getLng());
         dataMap.put("height", startData.getHeight());
@@ -276,32 +269,23 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
     }
 
 
-   /*
-    public void updateUI(Map<String,Object> data){
-        mSatLatTV.setText("Lat:"+String.format("%.3f",data.get("lat") ) );
-        mSatLngTV.setText("Lng:"+String.format("%.3f",data.get("lng")) );
-        mSatHeightTV.setText("Height:"+String.format("%.2f",data.get("height"))+"km");
-        mDateTV.setText("Date:"+ new Date( (long)data.get("timestamp") ));
-    }*/
-
-
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"ISS",R.drawable.satellite_one);
+       /* GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"ISS",R.drawable.satellite_one);
         GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"NOAA-19",R.drawable.satellite_one);
         GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"Aqua",R.drawable.satellite_one);
         GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"GOES-13",R.drawable.satellite_one);
-        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"CASSIOPE",R.drawable.satellite_one);
-        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"MOON",R.drawable.satellite_one);
-        //fetch all the data from mainViewModel
-        fetchInitialData();
-
+        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"CASSIOPE",R.drawable.satellite_one);*/
+        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"moon",R.drawable.satellite_one);
         // Create a layer to display the  labels and satellites
         renderableLayer = new RenderableLayer();
         worldWindow.getLayers().addLayer(renderableLayer);
+
+        //fetch all the data from mainViewModel
+        fetchInitialData();
 
         //design the label
         TextAttributes textAttributes = new TextAttributes();
@@ -315,7 +299,6 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         label.setRotation(WorldWind.RELATIVE_TO_GLOBE); //will rotate when we will rotate the globe
 
         renderableLayer.addRenderable(label); // add the label to layer
-        
 
         //dummy sun location
         //for day-night feature add the sun location
@@ -360,7 +343,7 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
 
                 if(mode.equals("sat")){
                     Map<String,Object> dataMap = new HashMap<>();
-                    dataMap.put("satName",activeSatDataList.get(0).getId());
+                    dataMap.put("satName",activeSatDataList.get(0).getShortName());
                     dataMap.put("lat",lat);
                     dataMap.put("lng",lng);
                     dataMap.put("height",altitude);
@@ -478,15 +461,15 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         {
             activeSatDataListIdx = idx;
             Log.w(TAG,"acitveSat:"+ activeSatDataListIdx);
-            SatelliteBasicData data = activeSatDataList.get(idx+1);
+            TrajectoryData data = activeSatDataList.get(idx+1);
             Position pos = new Position(data.getLat(),data.getLng(),data.getHeight());
             long timestampDiff = activeSatDataList.get(idx+1).getTimestamp() - activeSatDataList.get(idx).getTimestamp();
             Log.w(TAG,"timestampDiff "+ timestampDiff);
 
             moveCamera(pos,timestampDiff,"sat"); //as data difference is 60 sec
 
-            if(activeSatDataListIdx>activeSatDataList.size()-2)
-                fetchSatDataFromSSC(satCodeList);
+           /* if(activeSatDataListIdx>activeSatDataList.size()-2)
+                fetchSatDataFromSSC(satCodeList);*/
         }
     }
 

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    tools:context=".views.VrViewFragment"
+    android:orientation="vertical"
+    android:animateLayoutChanges="true">
+
+    <com.google.vr.sdk.widgets.pano.VrPanoramaView
+        android:id="@+id/vrPanoramaView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+    </com.google.vr.sdk.widgets.pano.VrPanoramaView>
+
+    <ImageView
+        android:id="@+id/satellight"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        app:tint="#FFFFFF"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/vrPanoramaView"
+        app:layout_constraintVertical_bias="0.0"
+        tools:src="@drawable/satellite_mono" />
+
+    <com.google.android.material.button.MaterialButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Connect\nArduino"
+        app:icon="@drawable/ic_arduino"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.8" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
