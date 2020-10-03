@@ -25,5 +25,10 @@
         android:name="github.hmasum18.satellight.views.VrViewFragment"
         android:label="fragment_vr_view"
         tools:layout="@layout/fragment_vr_view" />
+    <fragment
+        android:id="@+id/detailsFragment"
+        android:name="github.hmasum18.satellight.views.DetailsFragment"
+        android:label="fragment_details"
+        tools:layout="@layout/fragment_details" />
 
 </navigation>

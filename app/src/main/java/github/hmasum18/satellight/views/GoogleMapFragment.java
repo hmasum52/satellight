@@ -85,7 +85,6 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
 
     //to get the device location
     private FusedLocationProviderClient mFusedLocationProviderClient;
-    private LatLng deviceLatLng = null;
     private LatLngBounds.Builder latLngBuilder = new LatLngBounds.Builder();
     int[] rawMapStyles = {R.raw.dark_map,R.raw.night_map,R.raw.aubergine_map,R.raw.assassins_creed_map};
 
@@ -117,9 +116,6 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
         if (getArguments() != null) {
 
         }
-        //get permission from user to access the location info
-        getLocationPermission();
-
         mapsActivity = (MapsActivity) this.getActivity();
 
     }
@@ -136,6 +132,27 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
         mainViewModel  = new ViewModelProvider(requireActivity()).get(MainViewModel.class);
 
         return rootView;
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        //init the map
+        initMap();
+    }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        mMap = googleMap;
+        mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this.getContext(),rawMapStyles[3]));
+        //mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+        mMap.getUiSettings().setZoomControlsEnabled(true);
+
+        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"moon",R.drawable.ic_moon);
+
+        //get permission from user to access the location info
+        getLocationPermission();
+        fetchInitialData();
     }
 
     /**
@@ -162,15 +179,17 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
      */
     public void fetchSatDataFromSSC(ArrayList<String> satCodeList){
         //fetch satellite data from nasa SSC
-        String fromTime = Utils.getTimeAsString(System.currentTimeMillis()-(1000*60*10)); //before 10 min of current timestamp
-        String toTime = Utils.getTimeAsString(System.currentTimeMillis()+1000*60*30); //after 30 min of current timestamp
+        String fromTime = Utils.getTimeAsString(System.currentTimeMillis()-(1000*60*5)); //before 5 min of current timestamp
+        String toTime = Utils.getTimeAsString(System.currentTimeMillis()+1000*60*20); //after 20 min of current timestamp
         Log.w(TAG,fromTime+" && "+toTime);
         mainViewModel.getLocationOfSatellite(satCodeList,fromTime,toTime).observe(requireActivity(),satelliteBasicDataMap -> {
             Log.w(TAG,"number of sat data in the map:"+satelliteBasicDataMap.size());
             if(satelliteBasicDataMap.size()>=2){
                 mapsActivity.allSatDatFromSSCMap = satelliteBasicDataMap;
                // Log.w(TAG," recievedMap:"+satelliteBasicDataMap);
-                getDeviceLocation();
+                if(activeSatDataList.size() == 0 && mapsActivity.isLocationPermissionGranted){
+                    getDeviceLocation();
+                }
             }
         });
     }
@@ -185,8 +204,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
             activeSatAnimator.end();
             activeSatAnimator = null;
         }
-        for (Polyline polyline :
-                drawnPolyLine) {
+        for (Polyline polyline : drawnPolyLine) {
             polyline.remove();
         }
         drawnPolyLine = new ArrayList<>();
@@ -202,6 +220,12 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
         currentIdx = Math.max(currentIdx, 0);
 
         Log.w(TAG," iniitSat: currentIdx:"+currentIdx);
+
+        if(currentIdx>=activeSatDataList.size()-3){
+            long start = mapsActivity.lastRequestedTimestampEnd - 1000*60*5;
+            long end = mapsActivity.lastRequestedTimestampEnd + 1000*60*20;
+            mainViewModel.callForDataAgain(start,end,mapsActivity.deviceLatLng);
+        }
         percent -= currentIdx;
 
         TrajectoryData startData =  activeSatDataList.get(currentIdx);
@@ -248,30 +272,15 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
                     updateSatelliteLocation(activeSatDataList.get(activeSatDataListIdx),timeIntervalBetweenTwoData );
                     moveSatellite();
                 }else{
-                    fetchInitialData();
+                    long start = mapsActivity.lastRequestedTimestampEnd - 1000*60*5;
+                    long end = mapsActivity.lastRequestedTimestampEnd + 1000*60*20;
+                    mainViewModel.callForDataAgain(start,end,mapsActivity.deviceLatLng);
                 }
             }
         });
     }
 
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-        //init the map
-        initMap();
-    }
 
-    @Override
-    public void onMapReady(GoogleMap googleMap) {
-        mMap = googleMap;
-        mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this.getContext(),rawMapStyles[3]));
-        //mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
-        mMap.getUiSettings().setZoomControlsEnabled(true);
-
-        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"moon",R.drawable.ic_moon);
-
-        fetchInitialData();
-    }
 
     /**
      * Move the map camera to a certain lat lng
@@ -336,6 +345,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
             dataMap.put("lat", satData.getLat());
             dataMap.put("lng", satData.getLng());
             dataMap.put("height", satData.getHeight());
+            dataMap.put("velocity",satData.getVelocity());
             dataMap.put("timestamp", System.currentTimeMillis());
             mapsActivity.updateUI(dataMap);
 
@@ -364,6 +374,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
                             );
 
                             double nextHeight = multiplier * currentSatData.getHeight() + (1 - multiplier) * previousSatData.getHeight();
+                            double nextVelocity = multiplier * currentSatData.getVelocity() + (1 - multiplier) * previousSatData.getVelocity();
 
                             movingSatelliteMarker.setPosition(nextLocation);
                             movingSatelliteMarker.setAnchor(0.5f,0.5f);
@@ -373,6 +384,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
                             dataMap.put("lat", nextLocation.latitude);
                             dataMap.put("lng", nextLocation.longitude);
                             dataMap.put("height", nextHeight);
+                            dataMap.put("velocity",nextVelocity);
                             dataMap.put("timestamp", System.currentTimeMillis());
                             mapsActivity.updateUI(dataMap);
 
@@ -385,12 +397,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
             });
             activeSatAnimator.start();
         }
-
-
     }
-
-
-
 
     public void addLineBetweenTwoPoints(final LatLng from, final LatLng to){
         final PolylineOptions polylineOptions = new PolylineOptions();
@@ -415,7 +422,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
          * cases when a location is not available.
          */
         try {
-            if (isLocationPermissionGranted) {
+            if (mapsActivity.isLocationPermissionGranted) {
                 Task<Location> locationResult = mFusedLocationProviderClient.getLastLocation();
                 locationResult.addOnCompleteListener(new OnCompleteListener<Location>() {
                     @Override
@@ -424,12 +431,16 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
                             Log.w(TAG,"getDeviceLocation onComplete: location found");
                             Location location = task.getResult();
                             if(location!=null)
-                                deviceLatLng = new LatLng(	location.getLatitude(),location.getLongitude() );
+                                mapsActivity.deviceLatLng = new LatLng(	location.getLatitude(),location.getLongitude() );
                             else return;
-                            Log.w(TAG," requesting data from "+deviceLatLng);
-                            mainViewModel.getAllSatelliteData(System.currentTimeMillis()-1000*60*5 //before 5 minutes
-                                    ,System.currentTimeMillis()+1000*60*20 //after 20 minutes
-                                    ,deviceLatLng).observe(GoogleMapFragment.this.getViewLifecycleOwner(),stringSatelliteDataMap -> {
+                            Log.w(TAG," requesting data from "+mapsActivity.deviceLatLng);
+
+                            mapsActivity.lastRequestedTimestampBegin = System.currentTimeMillis()-1000*60*5;
+                            mapsActivity.lastRequestedTimestampEnd = System.currentTimeMillis()+1000*60*20;
+
+                            mainViewModel.getAllSatelliteData(mapsActivity.lastRequestedTimestampBegin //before 5 minutes
+                                    ,mapsActivity.lastRequestedTimestampEnd //after 20 minutes
+                                    ,mapsActivity.deviceLatLng).observe(GoogleMapFragment.this.getViewLifecycleOwner(),stringSatelliteDataMap -> {
 
                                 mapsActivity.allSatelliteData = stringSatelliteDataMap;
                                 activeSatDataList = mapsActivity.allSatDatFromSSCMap.get(mapsActivity.activeSatCode);
@@ -468,7 +479,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
                 this.getContext(), Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED
         ){
-            isLocationPermissionGranted = true;
+            mapsActivity.isLocationPermissionGranted = true;
         } else {
             //get the location permission from user
             ActivityCompat.requestPermissions(this.getActivity(),
@@ -477,17 +488,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
         }
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        isLocationPermissionGranted = false;
-        switch (requestCode){
-            case PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION:
-                if(grantResults.length>0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED){
-                    isLocationPermissionGranted = true;
-                }
-        }
-    }
+
 
     @Override
     public void onResume() {
@@ -497,7 +498,10 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
     @Override
     public void onPause() {
         super.onPause();
-        if(satelliteAnimation != null)
+        if(satelliteAnimation != null )
         satelliteAnimation.cancel();
+        if(activeSatAnimator != null && activeSatAnimator.isRunning()){
+            activeSatAnimator.end();
+        }
     }
 }

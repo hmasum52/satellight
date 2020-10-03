@@ -192,7 +192,7 @@ public class MainRepository {
         return Math.sqrt(nominator/denominator); //calculate earth radius and return
     }
 
-    private void callSatelliteInfoFromOurApi(long timestampBegin,long timestampEnd, LatLng latLng){
+    public void callSatelliteInfoFromOurApi(long timestampBegin,long timestampEnd, LatLng latLng){
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("type","all_trajectory");
         jsonObject.addProperty("freq",20000);

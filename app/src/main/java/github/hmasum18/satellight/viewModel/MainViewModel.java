@@ -29,4 +29,8 @@ public class MainViewModel extends ViewModel {
     public LiveData<Map<String, SatelliteData>> getAllSatelliteData(long timestampBegin, long timestampEnd, LatLng userLocation){
        return mainRepository.getAllSatelliteData(timestampBegin,timestampEnd,userLocation);
     }
+
+    public void callForDataAgain(long from, long to , LatLng latLng){
+        mainRepository.callSatelliteInfoFromOurApi(from, to ,latLng);
+    }
 }

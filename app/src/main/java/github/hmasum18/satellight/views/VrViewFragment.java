@@ -4,20 +4,27 @@ import android.content.res.AssetManager;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.util.Pair;
 import androidx.fragment.app.Fragment;
 
+import android.os.Handler;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import com.google.vr.sdk.widgets.pano.VrPanoramaView;
 
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -51,6 +58,9 @@ public class VrViewFragment extends Fragment {
 
     private Rotation rotation;
 
+    //view
+    Button mArduinoConnectBtn;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -68,6 +78,7 @@ public class VrViewFragment extends Fragment {
 
         mVRPanoramaView = rootView.findViewById(R.id.vrPanoramaView);
         satelliteView = rootView.findViewById(R.id.satellight);
+        mArduinoConnectBtn = rootView.findViewById(R.id.vrViewFrag_arduinoConnectBtn);
 
         satelliteView.setImageResource(R.drawable.satellite_mono);
 
@@ -76,6 +87,19 @@ public class VrViewFragment extends Fragment {
         setupRotation();
 
         return rootView;
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        mArduinoConnectBtn.setOnClickListener(v -> {
+            Toast.makeText(getContext(),"Connecting with Arduino",Toast.LENGTH_SHORT).show();
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(getContext(),"Connected Successfully. Determining the location of "+mapsActivity.activeSatCode+" in 3d space.",Toast.LENGTH_LONG).show();
+                }
+            },1000);
+        });
     }
 
     /**
@@ -112,6 +136,18 @@ public class VrViewFragment extends Fragment {
 
         Log.w(TAG," azimuth:"+azimuth+" elevation: "+elevation);
         satellite = new Satellite((float)azimuth-90,(float)elevation);
+
+        //for debug
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd/mm/yyyy,hh:mm:ss aa");
+                String date = simpleDateFormat.format(new Date( System.currentTimeMillis() ) );
+                Log.w(TAG,""+mapsActivity.mDateTV.getText());
+                mapsActivity.mDateTV.setText("Date:"+ date+"\n"+String.format("azimuth: %.2f Elevation: %.2f"
+                        ,satellite.getHorizontalAngle()+90,satellite.getVerticalAngle()));
+            }
+        },1000);
     }
 
 
@@ -174,7 +210,7 @@ public class VrViewFragment extends Fragment {
                 float HBias = 0.5f + pair.first;
                 float VBias = 0.5f - pair.second;
 
-                Log.d(TAG, "getRotationListener: _ " + HBias + " | " + VBias);
+               //Log.d(TAG, "getRotationListener: _ " + HBias + " | " + VBias);
                // Log.d(TAG, "getRotationListener: " + satelliteView.getDrawable());
 
                 ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) satelliteView.getLayoutParams();

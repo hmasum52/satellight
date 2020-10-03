@@ -221,6 +221,13 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         int currentIdx = (int)percent;
         currentIdx = Math.max(currentIdx, 0);
 
+        //fetch data gain for next 20 min
+        if(currentIdx>= activeSatDataList.size()-3) {
+            long start = mapsActivity.lastRequestedTimestampEnd - 1000 * 60 * 5;
+            long end = mapsActivity.lastRequestedTimestampEnd + 1000 * 60 * 20;
+            mainViewModel.callForDataAgain(start, end, mapsActivity.deviceLatLng);
+        }
+
         Log.w(TAG," iniitSat: currentIdx:"+currentIdx);
         percent -= currentIdx;
 
@@ -230,25 +237,27 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         double lat = startData.getLat()*(1-percent) + percent*secondData.getLat();
         double lng = (1-percent)*startData.getLng() + percent*secondData.getLng();
         double altitude = (1-percent)*startData.getHeight() + percent*secondData.getHeight();
+        double velocity = (1-percent)*startData.getVelocity() + percent*secondData.getVelocity();
 
         activeSatPosition = new Position(lat, lng, altitude);
         if(lastplackmark != null){
             removeSatellite(lastplackmark);
         }
-        lastplackmark = GlobeUtils.addSatelliteToRenderableLayer(renderableLayer, activeSatPosition,R.drawable.satellite_one);;
+        //will add the satellite in future
+        //lastplackmark = GlobeUtils.addSatelliteToRenderableLayer(renderableLayer, activeSatPosition,R.drawable.satellite_one);;
 
         Log.w(TAG,"init: "+startData.getShortName());
         if(altitude<2000 && (worldWindow.getNavigator().getAltitude()/1000)<2000 && !startData.getShortName().equals(prevSatCode)){
             Position temp = new Position(lat/3,lng/3,altitude+5000);
-            moveCamera(temp,500,"sat");
+            moveCamera(temp,500,"sat",startData.getVelocity(),velocity/2);
             new Handler().postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    moveCamera(activeSatPosition,500,"sat");
+                    moveCamera(activeSatPosition,500,"sat",velocity/2,velocity);
                 }
             },500);
         }else{
-            moveCamera(activeSatPosition,500,"sat");
+            moveCamera(activeSatPosition,500,"sat",startData.getVelocity(),velocity);
         }
 
         new Handler().postDelayed(new Runnable() {
@@ -261,10 +270,11 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
 
         Map<String,Object> dataMap = new HashMap<>();
         dataMap.put("satName",startData.getShortName());
-        dataMap.put("lat", startData.getLat());
-        dataMap.put("lng", startData.getLng());
-        dataMap.put("height", startData.getHeight());
-        dataMap.put("timestamp", startData.getTimestamp());
+        dataMap.put("lat", lat);
+        dataMap.put("lng", lng);
+        dataMap.put("height", altitude);
+        dataMap.put("velocity",velocity);
+        dataMap.put("timestamp", System.currentTimeMillis());
         mapsActivity.updateUI(dataMap);
     }
 
@@ -274,11 +284,6 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-       /* GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"ISS",R.drawable.satellite_one);
-        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"NOAA-19",R.drawable.satellite_one);
-        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"Aqua",R.drawable.satellite_one);
-        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"GOES-13",R.drawable.satellite_one);
-        GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"CASSIOPE",R.drawable.satellite_one);*/
         GlobeUtils.addSatelliteToChipGroup(this,mSatelliteChipGroup,"moon",R.drawable.satellite_one);
         // Create a layer to display the  labels and satellites
         renderableLayer = new RenderableLayer();
@@ -287,7 +292,7 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         //fetch all the data from mainViewModel
         fetchInitialData();
 
-        //design the label
+       /* //design the label
         TextAttributes textAttributes = new TextAttributes();
         textAttributes.setTextColor(new Color(0,0,0,1));  //black
         textAttributes.setOutlineColor(new Color(1,1,1,1)); //white
@@ -296,9 +301,9 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
 
         Position bheramara = new Position(24.019686, 88.993371,0);
         Label label = new Label(bheramara,"Bangladesh",textAttributes);
-        label.setRotation(WorldWind.RELATIVE_TO_GLOBE); //will rotate when we will rotate the globe
+        label.setRotation(WorldWind.RELATIVE_TO_GLOBE); //will rotate when we will rotate the globe*/
 
-        renderableLayer.addRenderable(label); // add the label to layer
+       // renderableLayer.addRenderable(label); // add the label to layer
 
         //dummy sun location
         //for day-night feature add the sun location
@@ -315,7 +320,7 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         renderableLayer.removeRenderable(placemark);
     }
 
-    public void moveCamera(Position position,long moveDuration,String mode){
+    public void moveCamera(Position position,long moveDuration,String mode,double prevV,double currentV){
         //debug
        // position.altitude = 1e7*2.1;
 
@@ -336,6 +341,7 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
                 double lat = (1-percent)*currentCameraLat+percent*position.latitude;
                 double lng = (1-percent)*currentCameraLng+percent*position.longitude;
                 double altitude = (1-percent)*currentCameraHeight+percent*position.altitude;
+                double velocity = (1-percent)*prevV+percent*currentV;
 
                 worldWindow.getNavigator().setLatitude(lat);
                 worldWindow.getNavigator().setLongitude(lng);
@@ -350,7 +356,7 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
                     dataMap.put("timestamp",System.currentTimeMillis());
 
                     Position currentSatPos = new Position(lat,lng,position.altitude*1000);
-                    removeSatellite(lastplackmark);
+                   // removeSatellite(lastplackmark);
                     lastplackmark = GlobeUtils.addSatelliteToRenderableLayer(renderableLayer,currentSatPos,R.drawable.satellite_one);
                     mapsActivity.updateUI(dataMap);
                 }
@@ -461,15 +467,19 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         {
             activeSatDataListIdx = idx;
             Log.w(TAG,"acitveSat:"+ activeSatDataListIdx);
+            TrajectoryData prevData = activeSatDataList.get(idx);
             TrajectoryData data = activeSatDataList.get(idx+1);
-            Position pos = new Position(data.getLat(),data.getLng(),data.getHeight());
+            Position position = new Position(data.getLat(),data.getLng(),data.getHeight());
             long timestampDiff = activeSatDataList.get(idx+1).getTimestamp() - activeSatDataList.get(idx).getTimestamp();
             Log.w(TAG,"timestampDiff "+ timestampDiff);
 
-            moveCamera(pos,timestampDiff,"sat"); //as data difference is 60 sec
-
-           /* if(activeSatDataListIdx>activeSatDataList.size()-2)
-                fetchSatDataFromSSC(satCodeList);*/
+            //fetch dat again
+            if(idx>= activeSatDataList.size()-3){
+                long start = mapsActivity.lastRequestedTimestampEnd - 1000*60*5;
+                long end = mapsActivity.lastRequestedTimestampEnd + 1000*60*20;
+                mainViewModel.callForDataAgain(start,end,mapsActivity.deviceLatLng);
+            }
+            moveCamera(position,timestampDiff,"sat",prevData.getVelocity(),data.getVelocity()); //as data difference is 60 sec
         }
     }
 

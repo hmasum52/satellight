@@ -21,4 +21,12 @@ public class Satellite {
 
         return new Pair<>((horizontalAngle-deviceHAngle)/HFieldOfView, (verticalAngle-deviceVAngle)/VFieldOfView);
     }
+
+    public float getHorizontalAngle() {
+        return horizontalAngle;
+    }
+
+    public float getVerticalAngle() {
+        return verticalAngle;
+    }
 }
