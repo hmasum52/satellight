@@ -138,6 +138,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         //init the map
+       // mapsActivity.progressBar.setVisibility(View.GONE);
         initMap();
     }
 

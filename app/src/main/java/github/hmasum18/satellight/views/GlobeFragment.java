@@ -69,7 +69,7 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
     //views
     private WorldWindow worldWindow;
     private RenderableLayer renderableLayer; //layer in which we can render our satellites and locations
-    private Placemark lastplackmark;
+    //private Placemark lastplackmark;
     private boolean scaleUp = false;
 
     private TextView mSatLatTV,mSatLngTV,mSatHeightTV,mSatSpeedTV,mDateTV;
@@ -240,9 +240,9 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         double velocity = (1-percent)*startData.getVelocity() + percent*secondData.getVelocity();
 
         activeSatPosition = new Position(lat, lng, altitude);
-        if(lastplackmark != null){
+       /* if(lastplackmark != null){
             removeSatellite(lastplackmark);
-        }
+        }*/
         //will add the satellite in future
         //lastplackmark = GlobeUtils.addSatelliteToRenderableLayer(renderableLayer, activeSatPosition,R.drawable.satellite_one);;
 
@@ -353,11 +353,12 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
                     dataMap.put("lat",lat);
                     dataMap.put("lng",lng);
                     dataMap.put("height",altitude);
+                    dataMap.put("velocity",velocity);
                     dataMap.put("timestamp",System.currentTimeMillis());
 
                     Position currentSatPos = new Position(lat,lng,position.altitude*1000);
                    // removeSatellite(lastplackmark);
-                    lastplackmark = GlobeUtils.addSatelliteToRenderableLayer(renderableLayer,currentSatPos,R.drawable.satellite_one);
+                    //lastplackmark = GlobeUtils.addSatelliteToRenderableLayer(renderableLayer,currentSatPos,R.drawable.satellite_one);
                     mapsActivity.updateUI(dataMap);
                 }
             }
