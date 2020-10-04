@@ -301,10 +301,11 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
      * @return
      */
     private Marker addSatelliteAndGet(LatLng latLng,String name){
-        BitmapDescriptor bitmapDescriptor1 = BitmapDescriptorFactory.fromBitmap(MapUtils.getSatelliteBitmap(this.getContext()));
-        BitmapDescriptor bitmapDescriptor2 = getMarkerIconFromDrawable(GlobeUtils.satelliteIconMap.get(name));
+        BitmapDescriptor defaultSatBitmapDescriptor = BitmapDescriptorFactory.fromBitmap(MapUtils.getSatelliteBitmap(this.getContext()));
+        BitmapDescriptor urlSatBitmapDescriptor = getMarkerIconFromDrawable(GlobeUtils.satelliteIconMap.get(name));
 
-        BitmapDescriptor bitmapDescriptor = bitmapDescriptor2!=null?  bitmapDescriptor2 : bitmapDescriptor1;
+        //if satellite image is not loaded from the link use the default satellite image as descriptor for marker
+        BitmapDescriptor bitmapDescriptor = urlSatBitmapDescriptor!=null?  urlSatBitmapDescriptor : defaultSatBitmapDescriptor;
         return mMap.addMarker(new MarkerOptions().position(latLng).flat(true).icon(bitmapDescriptor));
     }
 
@@ -336,6 +337,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
         if(movingSatelliteMarker!=null)
             movingSatelliteMarker.remove();
         movingSatelliteMarker = addSatelliteAndGet(new LatLng(satData.getLat(), satData.getLng()),satData.getShortName());
+
 
         if(previousSatData == null){
             currentSatData = satData;
