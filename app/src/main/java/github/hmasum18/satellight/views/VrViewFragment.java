@@ -27,12 +27,9 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 
 import github.hmasum18.satellight.R;
-import github.hmasum18.satellight.models.SatelliteData;
 import github.hmasum18.satellight.models.TrajectoryData;
-import github.hmasum18.satellight.utils.GlobeUtils;
 import github.hmasum18.satellight.views.vr.Rotation;
 import github.hmasum18.satellight.views.vr.Satellite;
 
@@ -149,10 +146,59 @@ public class VrViewFragment extends Fragment {
                 SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd/mm/yyyy,hh:mm:ss aa");
                 String date = simpleDateFormat.format(new Date( System.currentTimeMillis() ) );
                 Log.w(TAG,""+mapsActivity.mDateTV.getText());
-                mapsActivity.mDateTV.setText("Date:"+ date+"\n"+String.format("azimuth: %.2f Elevation: %.2f"
-                        ,satellite.getHorizontalAngle()+90,satellite.getVerticalAngle()));
+                mapsActivity.mDateTV.setText("Date:"+ date+"\n"+String.format("azimuth: %.2f Elevation: %.2f\nSee:\n%s"
+                        ,satellite.getHorizontalAngle()+90,satellite.getVerticalAngle()
+                        ,predictDirection(azimuth,elevation)));
+
+                Toast.makeText(getContext(),"See "+predictDirection(azimuth,elevation)
+                        +" from your location to find "+mapsActivity.activeSatCode,Toast.LENGTH_LONG).show();
             }
         },1000);
+    }
+
+    public String predictDirection(double azimuth, double elevation){
+        int dif = 5;
+        StringBuilder direction = new StringBuilder();
+        if( (azimuth<=dif &&azimuth>=0) || (azimuth<=360 && azimuth>360 -dif) )
+            direction.append("North").append(", ").append("\n");
+        else if(azimuth>0+dif && azimuth<=45-dif)
+            direction.append("Between North & NorthEast").append(", ").append("\n");
+        else if(azimuth>45-dif && azimuth<=45+dif)
+            direction.append("North East").append(", ").append("\n");
+        else if(azimuth>45+dif && azimuth<=90-dif)
+            direction.append("Between NorthEast & East").append(", ").append("\n");
+        else if(azimuth>90-dif && azimuth<=90+dif)
+            direction.append("East").append(", ").append("\n");
+        else if(azimuth>90+dif && azimuth<=135-dif)
+            direction.append("Between East & SouthEast").append(", ").append("\n");
+        else if(azimuth>135-dif && azimuth<=135+dif)
+            direction.append("SouthEast").append(", ").append("\n");
+        else if(azimuth>135+dif && azimuth<=180-dif)
+            direction.append("Between SouthEast & South").append(", ").append("\n");
+        else if(azimuth>180-dif && azimuth<=180+dif)
+            direction.append("South").append(", ").append("\n");
+        else if(azimuth>180+dif && azimuth<=225-dif)
+            direction.append("Between South & SouthWest").append(", ").append("\n");
+        else if(azimuth>225-dif && azimuth<=225+dif)
+            direction.append("SouthWest").append(", ").append("\n");
+        else if(azimuth>225+dif && azimuth<=270-dif)
+            direction.append("Between SouthWest & West").append(", ").append("\n");
+        else if(azimuth>270-dif && azimuth<=270+dif)
+            direction.append("West").append(", ").append("\n");
+        else if(azimuth>270+dif && azimuth<=315-dif)
+            direction.append("Between West & NorthWest").append(", ").append("\n");
+        else if(azimuth>315-dif && azimuth<=315+dif)
+            direction.append("NorthWest").append(", ").append("\n");
+        else if(azimuth>315+dif && azimuth<=360-dif)
+            direction.append("Between NorthWest & North").append(", ").append("\n");
+
+        if(elevation>5)
+            direction.append("Sky");
+        else if(elevation<-5)
+            direction.append("Below SeaLevel");
+        else direction.append("SeaLevel");
+
+        return direction.toString();
     }
 
 
@@ -203,7 +249,7 @@ public class VrViewFragment extends Fragment {
     private void setupRotation() {
         rotation = new Rotation(this.getContext());
         Rotation.RotationListener cl = getRotationListener();
-        rotation.setListener(cl);
+        rotation.setRotationListener(cl);
     }
 
 

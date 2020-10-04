@@ -7,7 +7,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 
 public class Rotation implements SensorEventListener {
-    private static final String TAG = "Compass";
+    private static final String TAG = "Rotation:";
 
     public interface RotationListener {
         void onNewAzimuth(float azimuth, float verticalAngle);
@@ -54,7 +54,7 @@ public class Rotation implements SensorEventListener {
         setAzimuthFix(0);
     }
 
-    public void setListener(RotationListener l) {
+    public void setRotationListener(RotationListener l) {
         listener = l;
     }
 
