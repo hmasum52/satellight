@@ -17,6 +17,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.vr.sdk.widgets.pano.VrPanoramaView;
@@ -46,6 +47,7 @@ public class VrViewFragment extends Fragment {
 
     private VrPanoramaView mVRPanoramaView;
     private ImageView satelliteView;
+    private TextView directionText;
 
     private int index = 2;
 
@@ -79,6 +81,7 @@ public class VrViewFragment extends Fragment {
         mVRPanoramaView = rootView.findViewById(R.id.vrPanoramaView);
         satelliteView = rootView.findViewById(R.id.satellight);
         mArduinoConnectBtn = rootView.findViewById(R.id.vrViewFrag_arduinoConnectBtn);
+        directionText = rootView.findViewById(R.id.direction_text);
 
         satelliteView.setImageResource(R.drawable.satellite_mono);
 
@@ -203,6 +206,20 @@ public class VrViewFragment extends Fragment {
 
     private Rotation.RotationListener getRotationListener() {
         return (azimuth, vAngle) -> runOnUiThread(() -> {
+            float m_azimuth = azimuth + 90;
+            final float DEVIATION = 10;
+
+            if ((m_azimuth>=360-DEVIATION && m_azimuth<=360) || (m_azimuth>=0 && m_azimuth<=DEVIATION))
+                directionText.setText("N");
+            else if (m_azimuth>=90-DEVIATION && m_azimuth<=90+DEVIATION)
+                directionText.setText("E");
+            else if (m_azimuth>=180-DEVIATION && m_azimuth<=180+DEVIATION)
+                directionText.setText("S");
+            else if (m_azimuth>=270-DEVIATION && m_azimuth<=270+DEVIATION)
+                directionText.setText("W");
+            else
+                directionText.setText("");
+
             Pair<Float, Float> pair = satellite.getPosition(azimuth, vAngle);
             if (pair != null) {
                 satelliteView.setVisibility(View.VISIBLE);
