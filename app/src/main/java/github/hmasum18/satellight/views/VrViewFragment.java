@@ -232,7 +232,7 @@ public class VrViewFragment extends Fragment {
                 directionText.setText("");
 
             ConstraintLayout.LayoutParams par = (ConstraintLayout.LayoutParams) hLocationText.getLayoutParams();
-            par.horizontalBias = (vAngle+90.0f)/180;
+            par.verticalBias = (-vAngle+90.0f)/180;
             hLocationText.setLayoutParams(par);
 
             Pair<Float, Float> pair = satellite.getPosition(azimuth, vAngle);
