@@ -19,6 +19,7 @@ import github.hmasum18.satellight.R;
 public class ModelViewFragment extends Fragment {
 
     private WebView webView;
+    MapsActivity mapsActivity;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -26,6 +27,7 @@ public class ModelViewFragment extends Fragment {
         if (getArguments() != null) {
 
         }
+        mapsActivity = (MapsActivity) getActivity();
     }
 
     @Override
@@ -42,7 +44,15 @@ public class ModelViewFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         webView.getSettings().setJavaScriptEnabled(true);
-        webView.setWebViewClient(new WebViewClient());
+
+        mapsActivity.progressBar.setVisibility(View.VISIBLE);
+        webView.setWebViewClient(new WebViewClient(){
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                mapsActivity.progressBar.setVisibility(View.GONE);
+                super.onPageFinished(view, url);
+            }
+        });
         webView.loadUrl("https://satellight.netlify.app/");
     }
 }

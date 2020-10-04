@@ -7,7 +7,7 @@
     tools:context=".views.DetailsFragment">
 
 
-    <ImageButton
+    <ImageView
         android:id="@+id/detailsFrag_countryFlagIV"
         android:layout_width="50dp"
         android:layout_height="50dp"
@@ -39,6 +39,13 @@
                 android:text="details"
                 android:textColor="#000000" />
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="5dp"
+                android:text="Images:"
+                android:textColor="#000000" />
+
             <LinearLayout
                 android:id="@+id/detailsFrag_imageGallery"
                 android:layout_width="match_parent"
@@ -51,6 +58,7 @@
 
 
     <ScrollView
+        android:layout_marginStart="10dp"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:orientation="vertical"
@@ -116,12 +124,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        app:layout_constraintGuide_percent="0.30" />
+        app:layout_constraintGuide_percent="0.32" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        app:layout_constraintGuide_percent="0.95" />
+        app:layout_constraintGuide_percent="0.93" />
 </androidx.constraintlayout.widget.ConstraintLayout>

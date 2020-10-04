@@ -26,11 +26,15 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewPropertyAnimator;
 import android.view.animation.Animation;
+import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.target.CustomTarget;
 import com.bumptech.glide.request.transition.Transition;
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -81,19 +85,18 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
     private ChipGroup mSatelliteChipGroup;
 
     private GoogleMap mMap;
-    private boolean isLocationPermissionGranted = false;
+    private LocationCallback locationCallback;
 
     //to get the device location
     private FusedLocationProviderClient mFusedLocationProviderClient;
-    private LatLngBounds.Builder latLngBuilder = new LatLngBounds.Builder();
     int[] rawMapStyles = {R.raw.dark_map,R.raw.night_map,R.raw.aubergine_map,R.raw.assassins_creed_map};
 
     //to show satellite
     public TrajectoryData previousSatData;
     public TrajectoryData currentSatData;
     private Marker movingSatelliteMarker; //satellite icon as marker
-    private ArrayList<Polyline> drawnPolyLine = new ArrayList<>();
-    
+    private ArrayList<Polyline> drawnPolyLine = new ArrayList<>(); //polyline drawn to show a satellite trajectory
+
 
     //data from nasa ssc api
     ArrayList<String> satCodeList = new ArrayList<>(Arrays.asList(
@@ -125,9 +128,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         View rootView = inflater.inflate(R.layout.fragment_google_map, container, false);
-
         mSatelliteChipGroup = rootView.findViewById(R.id.googleMapFrag_satelliteCG);
-
         //init the data source
         mainViewModel  = new ViewModelProvider(requireActivity()).get(MainViewModel.class);
 
@@ -189,6 +190,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
                 mapsActivity.allSatDatFromSSCMap = satelliteBasicDataMap;
                // Log.w(TAG," recievedMap:"+satelliteBasicDataMap);
                 if(activeSatDataList.size() == 0 && mapsActivity.isLocationPermissionGranted){
+                    Log.w(TAG," requesting device loction from fetchSatDataFromSSC function");
                     getDeviceLocation();
                 }
             }
@@ -418,11 +420,42 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
     public void getDeviceLocation() {
         // Construct a FusedLocationProviderClient.
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this.getActivity());
+
+        LocationRequest locationRequest = LocationRequest.create();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setInterval(5*1000);
+
+        locationCallback = new LocationCallback(){
+
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                if(locationResult == null){
+                    Toast.makeText(getContext(),"Your location data not found . Please turn on your location. Using default location",Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                for (Location location : locationResult.getLocations()) {
+                    if (location != null) {
+                        mapsActivity.deviceLatLng = new LatLng(location.getLatitude(),location.getLongitude());
+                       Toast.makeText(getContext()," location found , Lat: "+location.getLatitude()+" lng: "+location.getLongitude(),Toast.LENGTH_SHORT).show();
+                        break;
+                    }else{
+                        Toast.makeText(getContext(),"Your location data not found . Please turn on your location. Using default location",Toast.LENGTH_SHORT).show();
+                    }
+                }
+                if(mFusedLocationProviderClient!=null){
+                    mFusedLocationProviderClient.removeLocationUpdates(locationCallback);
+                }
+            }
+        };
+
+
         /**
          * Get the best and most recent location of the device, which may be null in rare
          * cases when a location is not available.
          */
         try {
+
             if (mapsActivity.isLocationPermissionGranted) {
                 Task<Location> locationResult = mFusedLocationProviderClient.getLastLocation();
                 locationResult.addOnCompleteListener(new OnCompleteListener<Location>() {
@@ -431,10 +464,15 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
                         if(task.isSuccessful()){
                             Log.w(TAG,"getDeviceLocation onComplete: location found");
                             Location location = task.getResult();
-                            if(location!=null)
+                            if(location!=null){
                                 mapsActivity.deviceLatLng = new LatLng(	location.getLatitude(),location.getLongitude() );
-                            else return;
+                            }else{
+                                Toast.makeText(getContext(),"Your location data not found . Please turn on your location. Using default location",Toast.LENGTH_SHORT).show();
+                                mFusedLocationProviderClient.requestLocationUpdates(locationRequest,locationCallback,null);
+                            }
                             Log.w(TAG," requesting data from "+mapsActivity.deviceLatLng);
+
+                            mMap.setMyLocationEnabled(true); //is location is found
 
                             mapsActivity.lastRequestedTimestampBegin = System.currentTimeMillis()-1000*60*5;
                             mapsActivity.lastRequestedTimestampEnd = System.currentTimeMillis()+1000*60*20;

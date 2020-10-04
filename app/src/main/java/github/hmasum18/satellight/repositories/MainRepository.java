@@ -195,7 +195,7 @@ public class MainRepository {
     public void callSatelliteInfoFromOurApi(long timestampBegin,long timestampEnd, LatLng latLng){
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("type","all_trajectory");
-        jsonObject.addProperty("freq",20000);
+        jsonObject.addProperty("freq",30000);
         jsonObject.addProperty("lat",latLng.latitude);
         jsonObject.addProperty("lng",latLng.longitude);
         jsonObject.addProperty("alt",0);

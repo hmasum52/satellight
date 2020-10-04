@@ -5,7 +5,6 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
 import androidx.navigation.NavController;
 import androidx.navigation.NavDestination;
 import androidx.navigation.NavGraph;
@@ -25,7 +24,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.material.chip.ChipGroup;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -43,7 +41,7 @@ public class MapsActivity extends AppCompatActivity {
     private final static int  PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 101;
     public static final String TAG = "MapsActivity:";
     public boolean isLocationPermissionGranted = false;
-    public LatLng deviceLatLng;
+    public LatLng deviceLatLng = new LatLng(28.5728816,-80.6500725); //kennedy space center
 
     //data sources
     private MainViewModel mainViewModel;
@@ -76,7 +74,7 @@ public class MapsActivity extends AppCompatActivity {
         navController = Navigation.findNavController(this,R.id.mainActv_nav_host_frag );
         googleMapIBTN = findViewById(R.id.mainAcvt_googleMapIBTN);
         globeIBTN = findViewById(R.id.mainAcvt_1stPersonViewIBTN);
-        modelView3DIBTN = findViewById(R.id.mainAcvt_3dGlobeIBTN);
+        modelView3DIBTN = findViewById(R.id.mainAcvt_webViewIBTN);
         vrViewIBTN = findViewById(R.id.mainAcvt_vrViewIBTN);
 
         mDetailsFragBtn = findViewById(R.id.mainActv_detailsBtn);

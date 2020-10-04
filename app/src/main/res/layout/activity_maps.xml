@@ -31,8 +31,8 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="1.0"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/mainActv_detailsBtn"
-            app:layout_constraintVertical_bias="0.0">
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.22000003">
 
             <ImageButton
                 android:id="@+id/mainAcvt_googleMapIBTN"
@@ -49,18 +49,20 @@
                 android:src="@drawable/ic_baseline_remove_red_eye_24" />
 
             <ImageButton
-                android:id="@+id/mainAcvt_3dGlobeIBTN"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:backgroundTint="@color/colorPrimaryDark"
-                android:src="@drawable/ic_baseline_3d_rotation_24" />
-
-            <ImageButton
                 android:id="@+id/mainAcvt_vrViewIBTN"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:backgroundTint="@color/colorPrimaryDark"
                 android:src="@drawable/ic_vr" />
+
+            <ImageButton
+                android:id="@+id/mainAcvt_webViewIBTN"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/colorPrimaryDark"
+                android:src="@drawable/ic_web" />
+
+
         </LinearLayout>
 
         <LinearLayout
@@ -150,7 +152,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Details"
-            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintBottom_toTopOf="@+id/linearLayout"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_bias="0.0" />

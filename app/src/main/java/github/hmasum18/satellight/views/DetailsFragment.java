@@ -69,7 +69,7 @@ public class DetailsFragment extends Fragment {
                 .into(mCountryFlag);
 
         StringBuilder basicInfo = new StringBuilder();
-        basicInfo.append(satelliteData.getFullName()).append("\n");
+        basicInfo.append(satelliteData.getFullName()).append("\n\n");
         basicInfo.append("Country: ").append(satelliteData.getCountryName()).append("\n");
         basicInfo.append("Type: ").append(satelliteData.getType()).append("\n\n");
         basicInfo.append("Launch Date: ").append(satelliteData.getLaunchDate()).append("\n");;
@@ -87,16 +87,16 @@ public class DetailsFragment extends Fragment {
         mUseCases.setText(useCases.toString());
 
 
-       /* LayoutInflater inflater = LayoutInflater.from(this.getContext());
+        //LayoutInflater inflater = LayoutInflater.from(this.getContext());
         for (int i = 0; i < satelliteData.getRealImages().size(); i++) {
-           View view1 = inflater.inflate(R.layout.image_item,gallery,false);
-           ImageView imageView = view.findViewById(R.id.item_imageView);
+         //  View view1 = inflater.inflate(R.layout.image_item,gallery,false);
+           ImageView imageView = new ImageView(this.getContext());
            Glide.with(this)
                    .load(satelliteData.getRealImages().get(i))
                    .into(imageView);
 
-           gallery.addView(view1);
-        }*/
+           gallery.addView(imageView);
+        }
 
     }
 }
