@@ -3,31 +3,31 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main_nav_graph"
-    app:startDestination="@id/googleMapFragment">
+    app:startDestination="@id/modelViewFragment">
 
     <fragment
         android:id="@+id/globeFragment"
-        android:name="github.hmasum18.satellight.views.GlobeFragment"
+        android:name="github.hmasum18.satellight.view.fragment.GlobeFragment"
         android:label="fragment_globe"
         tools:layout="@layout/fragment_globe" />
     <fragment
         android:id="@+id/googleMapFragment"
-        android:name="github.hmasum18.satellight.views.GoogleMapFragment"
+        android:name="github.hmasum18.satellight.view.fragment.GoogleMapFragment"
         android:label="fragment_google_map"
         tools:layout="@layout/fragment_google_map" />
     <fragment
         android:id="@+id/modelViewFragment"
-        android:name="github.hmasum18.satellight.views.ModelViewFragment"
+        android:name="github.hmasum18.satellight.view.fragment.WebViewFragment"
         android:label="fragment_model_view"
         tools:layout="@layout/fragment_model_view" />
     <fragment
         android:id="@+id/vrViewFragment"
-        android:name="github.hmasum18.satellight.views.VrViewFragment"
+        android:name="github.hmasum18.satellight.view.fragment.VrViewFragment"
         android:label="fragment_vr_view"
         tools:layout="@layout/fragment_vr_view" />
     <fragment
         android:id="@+id/detailsFragment"
-        android:name="github.hmasum18.satellight.views.DetailsFragment"
+        android:name="github.hmasum18.satellight.view.fragment.DetailsFragment"
         android:label="fragment_details"
         tools:layout="@layout/fragment_details" />
 

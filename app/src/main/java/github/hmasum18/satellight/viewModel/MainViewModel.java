@@ -6,31 +6,32 @@ import androidx.lifecycle.ViewModel;
 import com.google.android.gms.maps.model.LatLng;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
-import github.hmasum18.satellight.models.SatelliteBasicData;
-import github.hmasum18.satellight.models.SatelliteData;
-import github.hmasum18.satellight.models.TrajectoryData;
-import github.hmasum18.satellight.repositories.MainRepository;
+import javax.inject.Inject;
+import javax.inject.Singleton;
 
+import github.hmasum18.satellight.service.model.Satellite;
+import github.hmasum18.satellight.service.model.SatelliteData;
+import github.hmasum18.satellight.service.model.TrajectoryData;
+import github.hmasum18.satellight.service.repository.MainRepo;
+
+
+@Singleton
 public class MainViewModel extends ViewModel {
-
     public static final String TAG = "MainViewModel:";
-    private MainRepository mainRepository;
 
+    @Inject
+    MainRepo mainRepo;
+
+    @Inject
     public MainViewModel() {
-        mainRepository = new MainRepository();
+
     }
 
-    public LiveData<Map<String,ArrayList<TrajectoryData>>> getLocationOfSatellite(ArrayList<String> satIdList, String fromTime, String toTime){
-        return mainRepository.getLocationOfSatelliteFromSSC(satIdList,fromTime,toTime);
+    public LiveData<List<Satellite>> getSatelliteDataList(){
+        return mainRepo.getSatelliteDataList();
     }
 
-    public LiveData<Map<String, SatelliteData>> getAllSatelliteData(long timestampBegin, long timestampEnd, LatLng userLocation){
-       return mainRepository.getAllSatelliteData(timestampBegin,timestampEnd,userLocation);
-    }
-
-    public void callForDataAgain(long from, long to , LatLng latLng){
-        mainRepository.callSatelliteInfoFromOurApi(from, to ,latLng);
-    }
 }

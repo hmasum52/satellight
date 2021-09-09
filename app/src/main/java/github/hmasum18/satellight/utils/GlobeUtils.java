@@ -1,22 +1,12 @@
 package github.hmasum18.satellight.utils;
 
-import android.app.Activity;
-import android.content.Context;
 import android.content.res.ColorStateList;
-import android.content.res.Resources;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.ColorFilter;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.os.AsyncTask;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.bumptech.glide.Glide;
@@ -25,17 +15,12 @@ import com.bumptech.glide.request.transition.Transition;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
-import github.hmasum18.satellight.R;
-import github.hmasum18.satellight.views.GlobeFragment;
-import github.hmasum18.satellight.views.GoogleMapFragment;
-import github.hmasum18.satellight.views.MapsActivity;
+import github.hmasum18.satellight.view.fragment.GlobeFragment;
+import github.hmasum18.satellight.view.fragment.GoogleMapFragment;
+import github.hmasum18.satellight.view.MainActivity;
 import gov.nasa.worldwind.geom.Position;
 import gov.nasa.worldwind.layer.RenderableLayer;
 import gov.nasa.worldwind.render.ImageSource;
@@ -160,23 +145,23 @@ public class GlobeUtils {
         chip.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#E5E5E5")));
         chip.setOnClickListener(v -> {
             String code =  ((Chip)v).getText().toString();
-            MapsActivity mapsActivity = (MapsActivity) fragment.getActivity();
+            MainActivity mainActivity = (MainActivity) fragment.getActivity();
             Log.w(TAG," selected Sat: "+code);
             if(fragment instanceof  GoogleMapFragment){
                 GoogleMapFragment temp = (GoogleMapFragment) fragment;
-                temp.activeSatDataList = mapsActivity.allSatDatFromSSCMap.get(code);
+                temp.activeSatDataList = mainActivity.allSatDatFromSSCMap.get(code);
                 if(temp.activeSatDataList == null)
-                    temp.activeSatDataList = mapsActivity.allSatelliteData.get(code).getTrajectoryDataList();
-                temp.prevSatCode = mapsActivity.activeSatCode;
-                mapsActivity.activeSatCode = code;
+                    temp.activeSatDataList = mainActivity.allSatelliteData.get(code).getTrajectoryDataList();
+                temp.prevSatCode = mainActivity.activeSatCode;
+                mainActivity.activeSatCode = code;
                 temp.initSatPosition();
             }else{ //instance of globe fragment
                 GlobeFragment temp = (GlobeFragment) fragment;
-                temp.activeSatDataList = mapsActivity.allSatDatFromSSCMap.get(code);
+                temp.activeSatDataList = mainActivity.allSatDatFromSSCMap.get(code);
                 if(temp.activeSatDataList == null)
-                    temp.activeSatDataList = mapsActivity.allSatelliteData.get(code).getTrajectoryDataList();
-                temp.prevSatCode = mapsActivity.activeSatCode;
-                mapsActivity.activeSatCode = code;
+                    temp.activeSatDataList = mainActivity.allSatelliteData.get(code).getTrajectoryDataList();
+                temp.prevSatCode = mainActivity.activeSatCode;
+                mainActivity.activeSatCode = code;
                 temp.initSatPosition();
             }
 
