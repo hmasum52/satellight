@@ -232,18 +232,17 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         Log.d(TAG, "onResume: ");
-        calculateLLA();
-      
+        //calculateLLA();
     }
 
     public void calculateLLA() {
-        // bangabandhu
+       /* // bangabandhu
         String line1 = "1 43463U 18044A   21251.91522778 -.00000369  00000+0  00000+0 0  9996";
-        String line2 = "2 43463   0.0263 249.6537 0002469 282.7932 264.3275  1.00273201 12236";
+        String line2 = "2 43463   0.0263 249.6537 0002469 282.7932 264.3275  1.00273201 12236";*/
 
         // iss
-      /*  String line1 = "1 25544U 98067A   20259.60133280  .00000295  00000-0  13495-4 0  9993";
-        String line2 = "2 25544  51.6439 261.0466 0000952 103.4889 359.3413 15.48949242246035";*/
+        String line1 = "1 25544U 98067A   21252.50949163  .00001550  00000+0  36756-4 0  9990";
+        String line2 = "2 25544  51.6444 285.7692 0003404  13.6408 132.5925 15.48614249301665";
 
         TleToGeo tleToGeo = new TleToGeo(line1, line2);
 
@@ -253,24 +252,5 @@ public class MainActivity extends AppCompatActivity {
         TleToGeo.SatelliteTrajectory position = tleToGeo.getSatellitePosition(lat, lng);
 
         Log.d(TAG, "calculateLLA: "+position);
-
-        try{
-            JSONObject object = new JSONObject();
-            object.put("line1", line1);
-            object.put("line2",line2);
-            object.put("lat", lat);
-            object.put("lng", lng);
-            object.put("time", System.currentTimeMillis());
-           /* JSONObject object = new JSONObject();
-            object.put("line1", "1 25544U 98067A   21252.18003037  .00001330  00000+0  32699-4 0  9993");
-            object.put("line2","2 25544  51.6447 287.3970 0003352  12.1752  96.0942 15.48611890301610");
-            object.put("lat", 22.68726);
-            object.put("lng", 91.7853);
-            object.put("time", System.currentTimeMillis());*/
-            satelliteJs.calculateSateData(object);
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-
     }
 }

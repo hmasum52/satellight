@@ -1,5 +1,6 @@
 package github.hmasum18.satellight.service.repository;
 
+import android.telecom.Call;
 import android.util.Log;
 
 import androidx.lifecycle.LiveData;
@@ -31,6 +32,9 @@ public class MainRepo{
     NetworkModule.SatelliteDataSource backend;
 
     @Inject
+    NetworkModule.CelestrakApi celestrakApi;
+
+    @Inject
     public MainRepo(){
     }
 
@@ -49,6 +53,7 @@ public class MainRepo{
                     public void onSuccess(List<Satellite> satellites) {
                         roomExecutorService.execute(()->{
                             satelliteDao.insert(satellites);
+                            fetchTLEData(satellites);
                         });
                     }
 
@@ -57,6 +62,36 @@ public class MainRepo{
                         Log.e(TAG, "onFailure: failed fetching satellite data from app script backend");
                     }
                 });
+    }
+
+    private void fetchTLEData(List<Satellite> satellites) {
+        for (Satellite sat : satellites) {
+            ApiCaller<String> caller = new ApiCaller<>(String.class, celestrakApi.getRetrofit());
+            caller.GETString("gp.php?CATNR="+sat.getId()+"&FORMAT=TLE")
+                    .addOnFinishListener(new OnFinishListener<String>() {
+                        @Override
+                        public void onSuccess(String s) {
+                            Log.d(TAG, "onSuccess: id: "+sat.getId());
+                            Log.d(TAG, "onSuccess: "+s);
+                            String[] lines = s.split("\n");
+                            if(lines.length==3){
+                                Log.d(TAG, "onSuccess: name: "+lines[0]);
+                                Log.d(TAG, "onSuccess: line1: "+lines[1]);
+                                Log.d(TAG, "onSuccess: line2: "+lines[2]);
+                                sat.setTleLine1(lines[1]);
+                                sat.setTleLine2(lines[2]);
+                                roomExecutorService.execute(()->{
+                                    satelliteDao.insert(sat);
+                                });
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(Exception e) {
+                            Log.e(TAG, "onFailure: failed fetching tle for "+sat.getId(), e);
+                        }
+                    });
+        }
     }
 
 }

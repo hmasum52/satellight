@@ -1,5 +1,7 @@
 package github.hmasum18.satellight.service.model;
 
+import github.hmasum18.satellight.utils.tle.TleToGeo;
+
 public class TrajectoryData {
     private String shortName;
     private double lat;
@@ -10,6 +12,10 @@ public class TrajectoryData {
     private double height;
     private double velocity;
     private long timestamp;
+
+    public TrajectoryData(TleToGeo.SatelliteTrajectory trajectory){
+
+    }
 
     //for SSC web service
     public TrajectoryData(String shortName, double lat, double lng, double height, long timestamp) {

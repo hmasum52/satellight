@@ -76,14 +76,16 @@ public class ApiCaller<T>{
         return this;
     }
 
-    public void GETString(String relativePath){
+    public ApiCaller<T> GETString(String relativePath){
         Call<ResponseBody> call = apiEndPoints.GETResponseBody(relativePath);
         enqueueRequest(call);
+        return this;
     }
 
-    public void GETString(String relativePath, Map<String, Object> header){
+    public ApiCaller<T> GETString(String relativePath, Map<String, Object> header){
         Call<ResponseBody> call = apiEndPoints.GETResponseBody(header, relativePath);
         enqueueRequest(call);
+        return this;
     }
 
     private void enqueueRequest(Call<ResponseBody> call){

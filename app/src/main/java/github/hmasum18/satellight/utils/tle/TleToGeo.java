@@ -153,15 +153,16 @@ public class TleToGeo {
 
             // You will need GMST for some of the coordinate transforms.
             // http://en.wikipedia.org/wiki/Sidereal_time#Definition
-            double gmSt = gsTime(time);//TemeGeodeticConverter.getGmst(TemeGeodeticConverter.getJulianTime(time));//this.gsTime(time);
+            double gmSt = TemeGeodeticConverter.getGmst(
+                    TemeGeodeticConverter.getJulianTime(time));
 
             Log.d(TAG, "calculateAzimuthElevation: gmst: "+gmSt);
 
             // You can get ECF, Geodetic, Look Angles
             Ecf positionEcf  = this.eciToEcf(positionEci, gmSt);
-            Log.d(TAG, "calculateAzimuthElevation: positionEcf: "+positionEcf);
+            //Log.d(TAG, "calculateAzimuthElevation: positionEcf: "+positionEcf);
             LookAngles lookAngles  = this.ecfToLookAngles(observerGeodetic, positionEcf);
-            Log.d(TAG, "calculateAzimuthElevation: "+lookAngles);
+            //Log.d(TAG, "calculateAzimuthElevation: "+lookAngles);
 
             // Look Angles may be accessed by `azimuth`, `elevation` properties.
             double azimuthRad  = lookAngles.azimuth;
@@ -176,61 +177,6 @@ public class TleToGeo {
             return "SatelliteTrajectory:" + new Gson().toJson(this);
         }
 
-
-        private double gsTime(Date date) {
-            Log.d(TAG, "gsTime: jday: "+jDay(date));
-            return gsTimeInternal(jDay(date));
-        }
-
-        private double gsTimeInternal(double jduT1) {
-            double tut1 = (jduT1 - 2451545.0) / 36525.0;
-
-            Log.d(TAG, "gsTimeInternal: tut1: "+tut1);
-
-            double temp = (-6.2e-6 * tut1 * tut1 * tut1) //-6.2e-6
-                    + (0.093104 * tut1 * tut1)
-                    + (((876600.0 * 3600.0) + 8640184.812866) * tut1) + 67310.54841; // # sec
-            Log.d(TAG, "gsTimeInternal: temp: "+temp);
-            //temp = ((temp * deg2rad) / 240.0) % twoPi; // 360/86400 = 1/240, to deg, to rad
-            temp = ((temp * ( Math.PI / 180.0)) / 240.0);
-
-            Log.d(TAG, "gsTimeInternal: temp: "+temp);
-
-            int div = (int)(temp/(Math.PI*2));
-            Log.d(TAG, "gsTimeInternal: div: "+div);
-            temp = temp - ((Math.PI*2)*div);
-
-            Log.d(TAG, "gsTimeInternal: temp: "+temp);
-
-            //  ------------------------ check quadrants ---------------------
-            if (temp < 0.0) {
-                temp += (Math.PI*2);
-            }
-
-            Log.d(TAG, "gsTimeInternal: temp: "+temp);
-
-            return temp;
-        }
-
-        private double jDay(Date date) {
-            Calendar cal = Calendar.getInstance();
-            cal.setTime(date);
-            int year = cal.get(Calendar.YEAR);
-            int mon = cal.get(Calendar.MONTH) + 1;
-            int day = cal.get(Calendar.DAY_OF_MONTH);
-            int hr = cal.get(Calendar.HOUR_OF_DAY);
-            int minute = cal.get(Calendar.MINUTE);
-            int sec = cal.get(Calendar.SECOND);
-            int msec = cal.get(Calendar.MILLISECOND);
-            Log.d(TAG, "jday: "+year+" "+mon+" "+day+" "+hr+" "+minute+" "+sec+" "+msec);
-            return (
-                    ((367.0 * year) - Math.floor((7 * (year + Math.floor((mon + 9) / 12.0))) * 0.25))
-                            + Math.floor((275 * mon) / 9.0)
-                            + day + 1721013.5
-                            + (((((msec / 60000.0) + (sec / 60.0) + minute) / 60.0) + hr) / 24.0) // ut in days
-                    // # - 0.5*sgn(100.0*year + mon - 190002.5) + 0.5;
-            );
-        }
 
         private Ecf eciToEcf(Eci eci, double gmst) {
             // ccar.colorado.edu/ASEN5070/handouts/coordsys.doc
