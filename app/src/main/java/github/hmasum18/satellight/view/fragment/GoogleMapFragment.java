@@ -183,17 +183,16 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback{
         String fromTime = Utils.getTimeAsString(System.currentTimeMillis()-(1000*60*5)); //before 5 min of current timestamp
         String toTime = Utils.getTimeAsString(System.currentTimeMillis()+1000*60*20); //after 20 min of current timestamp
         Log.d(TAG,fromTime+" && "+toTime);
-       /* mainViewModel.getLocationOfSatellite(satCodeList,fromTime,toTime).observe(requireActivity(),satelliteBasicDataMap -> {
+        mainViewModel.getLocationOfSatellite(satCodeList,fromTime,toTime).observe(requireActivity(),satelliteBasicDataMap -> {
             Log.d(TAG,"number of sat data in the map:"+satelliteBasicDataMap.size());
             if(satelliteBasicDataMap.size()>=2){
                 mainActivity.allSatDatFromSSCMap = satelliteBasicDataMap;
-               // Log.w(TAG," recievedMap:"+satelliteBasicDataMap);
                 if(activeSatDataList.size() == 0 && mainActivity.isLocationPermissionGranted){
                     Log.d(TAG," requesting device loction from fetchSatDataFromSSC function");
                     getDeviceLocation();
                 }
             }
-        });*/
+        });
     }
 
     public void initSatPosition(){

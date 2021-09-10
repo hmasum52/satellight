@@ -1,4 +1,4 @@
-package github.hmasum18.satellight.dagger.module;
+package github.hmasum18.satellight.dagger.module.network;
 
 import javax.inject.Singleton;
 
@@ -13,10 +13,12 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public abstract class NetworkModule{
     public static final String SATELLITE_DATA_URL = "https://raw.githubusercontent.com/Hmasum18/satellight-data/master/";
     public static final String CELESTRAK_API_BASE_URL = "https://celestrak.com/NORAD/elements/"; //gp.php?
+    public static final String NASA_SSC_API = "https://sscweb.gsfc.nasa.gov/WS/sscr/2/";
+
 
     @Provides
     @Singleton
-    static SatelliteDataSource provideRetrofit() {
+    static SatelliteDataSource provideSatelliteDataSource() {
         HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
         interceptor.level(HttpLoggingInterceptor.Level.BODY);
         OkHttpClient client = new OkHttpClient.Builder()
@@ -53,10 +55,29 @@ public abstract class NetworkModule{
         return new CelestrakApi(retrofit);
     }
 
-    public static class SatelliteDataSource{
+    @Provides
+    @Singleton
+    static NasaSSCApi provideNasaSSCApi() {
+        HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
+        interceptor.level(HttpLoggingInterceptor.Level.BODY);
+        OkHttpClient client = new OkHttpClient.Builder()
+                .addInterceptor(interceptor)
+                .followRedirects(true)
+                .build();
+
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(NASA_SSC_API)
+                .client(client)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        return new NasaSSCApi(retrofit);
+    }
+
+    public static class RetrofitWrapper{
         private final Retrofit retrofit;
 
-        public SatelliteDataSource(Retrofit retrofit) {
+        public RetrofitWrapper(Retrofit retrofit) {
             this.retrofit = retrofit;
         }
 
@@ -65,15 +86,23 @@ public abstract class NetworkModule{
         }
     }
 
-    public static class CelestrakApi{
-        private final Retrofit retrofit;
+    public static class SatelliteDataSource extends RetrofitWrapper{
+        public SatelliteDataSource(Retrofit retrofit) {
+            super(retrofit);
+        }
+    }
+
+    public static class CelestrakApi extends RetrofitWrapper{
 
         public CelestrakApi(Retrofit retrofit) {
-            this.retrofit = retrofit;
+            super(retrofit);
         }
+    }
 
-        public Retrofit getRetrofit() {
-            return retrofit;
+    public static class NasaSSCApi extends RetrofitWrapper{
+
+        public NasaSSCApi(Retrofit retrofit) {
+            super(retrofit);
         }
     }
 }

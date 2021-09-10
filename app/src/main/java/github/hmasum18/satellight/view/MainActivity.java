@@ -53,9 +53,6 @@ public class MainActivity extends AppCompatActivity {
 
     @Inject
     MainViewModel mainViewModel;
-
-    @Inject
-    SatelliteJs satelliteJs;
     
     //views datas
     public String activeSatCode = "ISS (ZARYA)"; //this is iss by default but will change when another one selected

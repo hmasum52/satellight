@@ -15,7 +15,7 @@ import github.hmasum18.satellight.view.App;
 
 // https://cdnjs.com/libraries/satellite.js/4.1.3
 // https://github.com/shashwatak/satellite-js
-@Singleton
+//@Singleton
 public class SatelliteJs{
     private static final String TAG = "SatelliteJs";
 
@@ -24,7 +24,7 @@ public class SatelliteJs{
 
     private boolean isPageLoadFinished = false;
 
-    @Inject
+    //@Inject
     public SatelliteJs(App app) {
         this.context = app.getApplicationContext();
         initWebView();

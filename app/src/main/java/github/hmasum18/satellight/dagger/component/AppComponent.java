@@ -4,7 +4,7 @@ import javax.inject.Singleton;
 
 import dagger.Component;
 import github.hmasum18.satellight.dagger.module.AppModule;
-import github.hmasum18.satellight.dagger.module.NetworkModule;
+import github.hmasum18.satellight.dagger.module.network.NetworkModule;
 import github.hmasum18.satellight.dagger.module.RoomModule;
 import github.hmasum18.satellight.view.MainActivity;
 import github.hmasum18.satellight.view.fragment.GoogleMapFragment;

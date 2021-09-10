@@ -1,6 +1,5 @@
 package github.hmasum18.satellight.service.repository;
 
-import android.telecom.Call;
 import android.util.Log;
 
 import androidx.lifecycle.LiveData;
@@ -8,12 +7,13 @@ import androidx.lifecycle.LiveData;
 import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 import javax.inject.Inject;
 
-import github.hmasum18.satellight.dagger.module.NetworkModule;
+import github.hmasum18.satellight.dagger.module.network.NetworkModule;
 import github.hmasum18.satellight.service.api.ApiCaller;
 import github.hmasum18.satellight.service.api.OnFinishListener;
 import github.hmasum18.satellight.service.model.Satellite;
@@ -29,7 +29,10 @@ public class MainRepo{
     SatelliteDao satelliteDao;
 
     @Inject
-    NetworkModule.SatelliteDataSource backend;
+    NetworkModule.NasaSSCApi nasaSSCApi;
+
+    @Inject
+    NetworkModule.SatelliteDataSource satelliteDataSource;
 
     @Inject
     NetworkModule.CelestrakApi celestrakApi;
@@ -45,7 +48,7 @@ public class MainRepo{
 
     public void fetchSatelliteDate(){
         Type type = new TypeToken<List<Satellite>>(){}.getType();
-        ApiCaller<List<Satellite>> caller = new ApiCaller<>(type,backend.getRetrofit());
+        ApiCaller<List<Satellite>> caller = new ApiCaller<>(type, satelliteDataSource.getRetrofit());
 
         caller.GETJson("data.json")
                 .addOnFinishListener(new OnFinishListener<List<Satellite>>() {

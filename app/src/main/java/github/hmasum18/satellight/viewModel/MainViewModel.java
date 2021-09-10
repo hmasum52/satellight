@@ -16,6 +16,7 @@ import github.hmasum18.satellight.service.model.Satellite;
 import github.hmasum18.satellight.service.model.SatelliteData;
 import github.hmasum18.satellight.service.model.TrajectoryData;
 import github.hmasum18.satellight.service.repository.MainRepo;
+import github.hmasum18.satellight.service.repository.NasaSSCApiRepo;
 
 
 @Singleton
@@ -26,12 +27,19 @@ public class MainViewModel extends ViewModel {
     MainRepo mainRepo;
 
     @Inject
+    NasaSSCApiRepo nasaSSCApiRepo;
+
+    @Inject
     public MainViewModel() {
 
     }
 
     public LiveData<List<Satellite>> getSatelliteDataList(){
         return mainRepo.getSatelliteDataList();
+    }
+
+    public LiveData<Map<String,ArrayList<TrajectoryData>>> getLocationOfSatellite(ArrayList<String> satIdList, String fromTime, String toTime){
+        return nasaSSCApiRepo.getLocationOfSatelliteFromSSC(satIdList,fromTime,toTime);
     }
 
 }

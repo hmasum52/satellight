@@ -14,7 +14,6 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 import github.hmasum18.satellight.R;
-import github.hmasum18.satellight.dagger.module.NetworkModule;
 import github.hmasum18.satellight.view.MainActivity;
 
 
