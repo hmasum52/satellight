@@ -1,5 +1,6 @@
 package github.hmasum18.satellight.view;
 
+import androidx.activity.result.ActivityResult;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -11,18 +12,21 @@ import androidx.navigation.NavInflater;
 import androidx.navigation.Navigation;
 import androidx.navigation.fragment.NavHostFragment;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.model.LatLng;
+import com.neosensory.tlepredictionengine.Tle;
 
+import org.jetbrains.annotations.NotNull;
+
+import java.security.Permission;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,10 +40,11 @@ import github.hmasum18.satellight.R;
 import github.hmasum18.satellight.dagger.component.AppComponent;
 import github.hmasum18.satellight.databinding.ActivityMainBinding;
 import github.hmasum18.satellight.service.model.SatelliteData;
+import github.hmasum18.satellight.service.model.SatelliteTrajectory;
 import github.hmasum18.satellight.service.model.TrajectoryData;
 import github.hmasum18.satellight.utils.Utils;
 import github.hmasum18.satellight.utils.tle.TleToGeo;
-import github.hmasum18.satellight.view.screen.SatelliteListAdapter;
+import github.hmasum18.satellight.view.adapter.SatelliteListAdapter;
 import github.hmasum18.satellight.view.screen.googlemap.DeviceLocationFinder;
 import github.hmasum18.satellight.viewModel.MainViewModel;
 
@@ -165,13 +170,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void getDeviceLocation() {
-        deviceLocationFinder = new DeviceLocationFinder(getApplicationContext(), this);
+        if(deviceLocationFinder == null)
+            deviceLocationFinder = new DeviceLocationFinder( this);
         deviceLocationFinder.requestDeviceLocation(new DeviceLocationFinder.OnDeviceLocationFoundListener() {
             @Override
             public void onDeviceLocationFound(LatLng latLng) {
                 Log.d(TAG, "onDeviceLocationFound: " + latLng);
             }
         });
+    }
+
+    public void setDeviceLocationFinder(DeviceLocationFinder deviceLocationFinder) {
+        this.deviceLocationFinder = deviceLocationFinder;
     }
 
     public DeviceLocationFinder getDeviceLocationFinder() {
@@ -247,13 +257,31 @@ public class MainActivity extends AppCompatActivity {
         String line1 = "1 25544U 98067A   21252.50949163  .00001550  00000+0  36756-4 0  9990";
         String line2 = "2 25544  51.6444 285.7692 0003404  13.6408 132.5925 15.48614249301665";
 
-        TleToGeo tleToGeo = new TleToGeo(line1, line2);
+        Tle tle = new Tle(line1, line2);
 
         double lat = 22.68726;
         double lng = 91.7853;
 
-        TleToGeo.SatelliteTrajectory position = tleToGeo.getSatellitePosition(lat, lng);
+        SatelliteTrajectory position = TleToGeo.getSatellitePosition(tle, new LatLng(lat, lng));
 
         Log.d(TAG, "calculateLLA: " + position);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull @NotNull String[] permissions, @NonNull @NotNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        Log.d(TAG, "onRequestPermissionsResult: code: "+requestCode);
+        Log.d(TAG, "onRequestPermissionsResult: length: "+permissions.length);
+        for (String s :
+                permissions) {
+            Log.d(TAG, "onRequestPermissionsResult: "+s);
+            if(s.equals("android.permission.ACCESS_FINE_LOCATION")){
+                if (grantResults.length > 0
+                        && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                    finish();
+                }
+            }
+        }
     }
 }

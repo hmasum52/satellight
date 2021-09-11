@@ -154,7 +154,7 @@ public class GlobeUtils {
                     temp.activeSatDataList = mainActivity.allSatelliteData.get(code).getTrajectoryDataList();
                 temp.prevSatCode = mainActivity.activeSatCode;*/
                 mainActivity.activeSatCode = code;
-                temp.initSatPosition();
+                //temp.initSatPosition();
             }else{ //instance of globe fragment
                 GlobeFragment temp = (GlobeFragment) fragment;
                 temp.activeSatDataList = mainActivity.allSatDatFromSSCMap.get(code);

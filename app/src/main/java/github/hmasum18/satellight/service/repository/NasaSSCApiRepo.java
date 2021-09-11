@@ -9,7 +9,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -25,8 +24,6 @@ import github.hmasum18.satellight.service.api.ApiCaller;
 import github.hmasum18.satellight.service.api.OnFinishListener;
 import github.hmasum18.satellight.service.model.TrajectoryData;
 import github.hmasum18.satellight.utils.tle.TleToGeo;
-import okhttp3.ResponseBody;
-import retrofit2.Call;
 
 public class NasaSSCApiRepo {
     private static final String TAG = "NasaSSCApiRepo";

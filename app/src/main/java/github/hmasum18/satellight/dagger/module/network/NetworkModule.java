@@ -1,6 +1,5 @@
 package github.hmasum18.satellight.dagger.module.network;
 
-import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import dagger.Module;
@@ -13,7 +12,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 @Module
 public abstract class NetworkModule{
     public static final String SATELLITE_DATA_URL = "https://raw.githubusercontent.com/Hmasum18/satellight-data/master/";
-    public static final String CELESTRAK_API_BASE_URL = "https://celestrak.com/NORAD/elements/"; //gp.php?
+    public static final String TLE_API_BASE_URL = "https://tle.ivanstanojevic.me/api/tle/";
     public static final String NASA_SSC_API = "https://sscweb.gsfc.nasa.gov/WS/sscr/2/";
 
 
@@ -36,10 +35,11 @@ public abstract class NetworkModule{
         return new SatelliteDataSource(retrofit);
     }
 
-    //https://celestrak.com/NORAD/documentation/gp-data-formats.php
+    // https://celestrak.com/NORAD/documentation/gp-data-formats.php
+    // https://tle.ivanstanojevic.me/
     @Provides
     @Singleton
-    static CelestrakApi provideCelestrakApi() {
+    static TLEApi provideTLEApi() {
         HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
         interceptor.level(HttpLoggingInterceptor.Level.BODY);
         OkHttpClient client = new OkHttpClient.Builder()
@@ -48,12 +48,12 @@ public abstract class NetworkModule{
                 .build();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(CELESTRAK_API_BASE_URL)
+                .baseUrl(TLE_API_BASE_URL)
                 .client(client)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
 
-        return new CelestrakApi(retrofit);
+        return new TLEApi(retrofit);
     }
 
     @Provides
@@ -99,11 +99,11 @@ public abstract class NetworkModule{
         }
     }
 
-    public static class CelestrakApi{
+    public static class TLEApi {
 
         private final Retrofit retrofit;
 
-        public CelestrakApi(Retrofit retrofit) {
+        public TLEApi(Retrofit retrofit) {
             this.retrofit = retrofit;
         }
 

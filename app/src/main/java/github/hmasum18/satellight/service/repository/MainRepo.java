@@ -4,10 +4,12 @@ import android.util.Log;
 
 import androidx.lifecycle.LiveData;
 
+import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 
+import org.json.JSONObject;
+
 import java.lang.reflect.Type;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -19,7 +21,7 @@ import github.hmasum18.satellight.service.api.OnFinishListener;
 import github.hmasum18.satellight.service.model.Satellite;
 import github.hmasum18.satellight.service.room.SatelliteDao;
 
-public class MainRepo{
+public class MainRepo {
     private static final String TAG = "MainRepo";
 
     @Inject
@@ -32,26 +34,27 @@ public class MainRepo{
     NetworkModule.SatelliteDataSource satelliteDataSource;
 
     @Inject
-    NetworkModule.CelestrakApi celestrakApi;
+    NetworkModule.TLEApi TLEApi;
 
     @Inject
-    public MainRepo(){
+    public MainRepo() {
     }
 
-    public LiveData<List<Satellite>> getSatelliteDataList(){
+    public LiveData<List<Satellite>> getSatelliteDataList() {
         fetchSatelliteDate(); // overwrite the existing data when success.
         return satelliteDao.getAllSatelliteData();
     }
 
-    public void fetchSatelliteDate(){
-        Type type = new TypeToken<List<Satellite>>(){}.getType();
+    public void fetchSatelliteDate() {
+        Type type = new TypeToken<List<Satellite>>() {
+        }.getType();
         ApiCaller<List<Satellite>> caller = new ApiCaller<>(type, satelliteDataSource.getRetrofit());
 
         caller.GETJson("data.json")
                 .addOnFinishListener(new OnFinishListener<List<Satellite>>() {
                     @Override
                     public void onSuccess(List<Satellite> satellites) {
-                        roomExecutorService.execute(()->{
+                        roomExecutorService.execute(() -> {
                             satelliteDao.insert(satellites);
                             fetchTLEData(satellites);
                         });
@@ -66,29 +69,30 @@ public class MainRepo{
 
     private void fetchTLEData(List<Satellite> satellites) {
         for (Satellite sat : satellites) {
-            ApiCaller<String> caller = new ApiCaller<>(String.class, celestrakApi.getRetrofit());
-            caller.GETString("gp.php?CATNR="+sat.getId()+"&FORMAT=TLE")
+            ApiCaller<String> caller = new ApiCaller<>(String.class, TLEApi.getRetrofit());
+            caller.GETString("" + sat.getId())
                     .addOnFinishListener(new OnFinishListener<String>() {
                         @Override
                         public void onSuccess(String s) {
-                            Log.d(TAG, "onSuccess: id: "+sat.getId());
-                            Log.d(TAG, "onSuccess: "+s);
-                            String[] lines = s.split("\n");
-                            if(lines.length==3){
-                                Log.d(TAG, "onSuccess: name: "+lines[0]);
-                                Log.d(TAG, "onSuccess: line1: "+lines[1]);
-                                Log.d(TAG, "onSuccess: line2: "+lines[2]);
-                                sat.setTleLine1(lines[1]);
-                                sat.setTleLine2(lines[2]);
-                                roomExecutorService.execute(()->{
-                                    satelliteDao.insert(sat);
-                                });
+                            try {
+                                JSONObject tle = new JSONObject(s);
+                                if(tle.has("line1")){
+                                    Log.d(TAG, "onSuccess: tle found, sat: "+tle.optString("name"));
+                                    sat.setTleLine1(tle.optString("line1"));
+                                    sat.setTleLine2(tle.optString("line2"));
+                                    roomExecutorService.execute(()->{
+                                        satelliteDao.insert(sat);
+                                    });
+                                }else
+                                    throw  new Exception();
+                            } catch (Exception e) {
+                                Log.d(TAG, "onSuccess: tle data not found, sat code: " + sat.getId());
                             }
                         }
 
                         @Override
                         public void onFailure(Exception e) {
-                            Log.e(TAG, "onFailure: failed fetching tle for "+sat.getId(), e);
+                            Log.e(TAG, "onFailure: failed fetching tle for " + sat.getId(), e);
                         }
                     });
         }

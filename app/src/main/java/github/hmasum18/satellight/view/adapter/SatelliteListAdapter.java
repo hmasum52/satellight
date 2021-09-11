@@ -1,5 +1,7 @@
-package github.hmasum18.satellight.view.screen;
+package github.hmasum18.satellight.view.adapter;
 
+import android.graphics.Color;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;;
@@ -21,15 +23,37 @@ import javax.inject.Singleton;
 import github.hmasum18.satellight.R;
 import github.hmasum18.satellight.databinding.CardSatelliteBinding;
 import github.hmasum18.satellight.service.model.Satellite;
+import github.hmasum18.satellight.view.OnSelectedSatelliteUpdateListener;
 
 @Singleton
 public class SatelliteListAdapter extends RecyclerView.Adapter<SatelliteListAdapter.Holder> {
+    private static final String TAG = "SatelliteListAdapter";
     private List<Satellite> satelliteList = new ArrayList<>();
     private List<Satellite> filteredList = new ArrayList<>();
     private SearchView searchView;
 
+    private Satellite selectedSatellite = null;
+    private OnSelectedSatelliteUpdateListener selectedSatelliteUpdateListener;
+
     @Inject
-    public SatelliteListAdapter(){
+    public SatelliteListAdapter() {
+    }
+
+    public void setSelectedSatellite(Satellite selectedSatellite) {
+        this.selectedSatellite = selectedSatellite;
+        if(selectedSatelliteUpdateListener!=null)
+            selectedSatelliteUpdateListener.onSelectedSatelliteUpdate(selectedSatellite);
+        super.notifyDataSetChanged();
+    }
+
+    public Satellite getSelectedSatellite() {
+        return selectedSatellite;
+    }
+
+    public void setSelectedSatelliteUpdateListener(OnSelectedSatelliteUpdateListener selectedSatelliteUpdateListener) {
+        this.selectedSatelliteUpdateListener = selectedSatelliteUpdateListener;
+        if(selectedSatelliteUpdateListener!=null)
+            selectedSatelliteUpdateListener.onSelectedSatelliteUpdate(selectedSatellite);
     }
 
     public void setSearchView(SearchView searchView) {
@@ -49,11 +73,11 @@ public class SatelliteListAdapter extends RecyclerView.Adapter<SatelliteListAdap
         });
     }
 
-    private boolean update(String s){
+    private boolean update(String s) {
         filteredList = new ArrayList<>();
-        for (Satellite sat: satelliteList){
-            if(isSubSequence(s.toLowerCase(), sat.getName().toLowerCase()
-                    , s.length() ,sat.getName().length()))
+        for (Satellite sat : satelliteList) {
+            if (isSubSequence(s.toLowerCase(), sat.getName().toLowerCase()
+                    , s.length(), sat.getName().length()))
                 filteredList.add(sat);
         }
         super.notifyDataSetChanged();
@@ -63,7 +87,10 @@ public class SatelliteListAdapter extends RecyclerView.Adapter<SatelliteListAdap
     public void setSatelliteList(List<Satellite> satelliteList) {
         this.satelliteList = satelliteList;
         this.filteredList = satelliteList;
-        super.notifyDataSetChanged();
+        if (satelliteList.size() > 0 && selectedSatellite == null){
+            setSelectedSatellite(satelliteList.get(0));
+        }else
+            super.notifyDataSetChanged();
     }
 
     @NonNull
@@ -82,6 +109,15 @@ public class SatelliteListAdapter extends RecyclerView.Adapter<SatelliteListAdap
         Glide.with(holder.mVB.getRoot()).load(satellite.getIconUrl()).into(holder.mVB.satelliteLogo);
         holder.mVB.satelliteName.setText(satellite.getName());
         holder.mVB.country.setText(satellite.getCountryName());
+
+        // background color
+        String color = satellite.getId() == selectedSatellite.getId() ? "#E1E1E1" : "#ffffff";
+        holder.mVB.getRoot().setBackgroundColor(Color.parseColor(color));
+
+        holder.mVB.getRoot().setOnClickListener(v -> {
+            setSelectedSatellite(satellite);
+            Log.d(TAG, "onBindViewHolder: selected:"+satellite.getName());
+        });
     }
 
     @Override
@@ -89,8 +125,9 @@ public class SatelliteListAdapter extends RecyclerView.Adapter<SatelliteListAdap
         return filteredList.size();
     }
 
-    public class Holder extends RecyclerView.ViewHolder{
+    static class Holder extends RecyclerView.ViewHolder {
         CardSatelliteBinding mVB;
+
         public Holder(@NonNull @NotNull View itemView) {
             super(itemView);
             mVB = CardSatelliteBinding.bind(itemView);

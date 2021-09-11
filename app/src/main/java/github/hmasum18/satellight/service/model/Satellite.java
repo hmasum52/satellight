@@ -9,6 +9,7 @@ import com.google.gson.Gson;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.reflect.TypeToken;
+import com.neosensory.tlepredictionengine.Tle;
 
 import java.lang.reflect.Type;
 import java.util.List;
@@ -153,6 +154,10 @@ public class Satellite {
 
     public String getTleLine2() {
         return tleLine2;
+    }
+
+    public Tle extractTle(){
+        return new Tle(tleLine1, tleLine2);
     }
 
     public void setTleLine2(String tleLine2) {

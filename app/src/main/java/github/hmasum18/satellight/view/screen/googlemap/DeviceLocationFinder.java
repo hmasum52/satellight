@@ -7,6 +7,7 @@ import android.location.Location;
 import android.util.Log;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultCaller;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -25,15 +26,15 @@ import com.google.android.gms.tasks.Task;
 import javax.inject.Inject;
 
 import github.hmasum18.satellight.view.App;
+import github.hmasum18.satellight.view.MainActivity;
 
 public class DeviceLocationFinder {
     //to get the device location
     public final static int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 101;
     public static final String TAG = "DeviceLocationFinder->";
-    private final Context context;
-    private ActivityResultCaller activityResultCaller;
+    private final MainActivity mainActivity;
     private LatLng deviceLatLng = null;
-
+    private OnDeviceLocationFoundListener onDeviceLocationFoundListener;
     private LocationCallback locationCallback;
 
     // see : https://developer.android.com/training/permissions/requesting
@@ -43,14 +44,18 @@ public class DeviceLocationFinder {
     private final ActivityResultLauncher<String> requestPermissionLauncher;
 
 
-    public DeviceLocationFinder(Context context, ActivityResultCaller activityResultCaller) {
-        this.context = context;
-        this.activityResultCaller = activityResultCaller;
+    public DeviceLocationFinder(MainActivity mainActivity) {
+        this.mainActivity = mainActivity;
 
-        requestPermissionLauncher = activityResultCaller.registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+        requestPermissionLauncher = mainActivity
+                .registerForActivityResult(new ActivityResultContracts.RequestPermission()
+                        , isGranted -> {
+            Log.d(TAG, "DeviceLocationFinder: registerForActivityResult: isGranted: "+isGranted);
             if (isGranted) {
                 // Permission is granted. Continue the action or workflow in your
                 // app.
+                Log.d(TAG, "DeviceLocationFinder: permission granted");
+                this.getDeviceLocation();
             } else {
                 // Explain to the user that the feature is unavailable because the
                 // features requires a permission that the user has denied. At the
@@ -58,7 +63,8 @@ public class DeviceLocationFinder {
                 // settings in an effort to convince the user to change their
                 // decision.
                 // required
-                this.getLocationPermission();
+                Log.d(TAG, "DeviceLocationFinder: permission not granted");
+               // this.getLocationPermission();
             }
         });
 
@@ -71,7 +77,7 @@ public class DeviceLocationFinder {
 
     public boolean isPermissionGranted() {
         return ContextCompat.checkSelfPermission(
-                context,
+                mainActivity,
                 Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
 
@@ -80,9 +86,42 @@ public class DeviceLocationFinder {
     }
 
     public void requestDeviceLocation(OnDeviceLocationFoundListener onDeviceLocationFoundListener) {
+        this.onDeviceLocationFoundListener = onDeviceLocationFoundListener;
+        Log.d(TAG, "requestDeviceLocation: ");
+        if(deviceLatLng!=null){
+            onDeviceLocationFoundListener.onDeviceLocationFound(deviceLatLng);
+            return;
+        }
+        Log.d(TAG, "requestDeviceLocation: device location is null");
+
+        this.getDeviceLocation();
+
+        /*LocationRequest locationRequest = LocationRequest.create();
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locationRequest.setInterval(5 * 1000);
+
+        locationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                if (locationResult == null) {
+                    return;
+                }
+                for (Location location : locationResult.getLocations()) {
+                    if (location != null) {
+                        deviceLatLng = new LatLng(location.getLatitude(), location.getLongitude());
+                        Log.d(TAG, "onLocationResult: " + " location found , Lat: " + location.getLatitude() + " lng: " + location.getLongitude());
+                        break;
+                    }
+                }
+                mFusedLocationProviderClient.removeLocationUpdates(locationCallback);
+            }
+        };*/
+    }
+
+    private void getDeviceLocation(){
         // Construct a FusedLocationProviderClient.
         FusedLocationProviderClient mFusedLocationProviderClient
-                = LocationServices.getFusedLocationProviderClient(context);
+                = LocationServices.getFusedLocationProviderClient(mainActivity);
         /**
          * Get the best and most recent location of the device, which may be null in rare
          * cases when a location is not available.
@@ -112,27 +151,6 @@ public class DeviceLocationFinder {
         } catch (SecurityException e) {
             e.printStackTrace();
         }
-
-        /*LocationRequest locationRequest = LocationRequest.create();
-        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        locationRequest.setInterval(5 * 1000);
-
-        locationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(LocationResult locationResult) {
-                if (locationResult == null) {
-                    return;
-                }
-                for (Location location : locationResult.getLocations()) {
-                    if (location != null) {
-                        deviceLatLng = new LatLng(location.getLatitude(), location.getLongitude());
-                        Log.d(TAG, "onLocationResult: " + " location found , Lat: " + location.getLatitude() + " lng: " + location.getLongitude());
-                        break;
-                    }
-                }
-                mFusedLocationProviderClient.removeLocationUpdates(locationCallback);
-            }
-        };*/
     }
 
     public LatLng getDeviceLatLng() {
