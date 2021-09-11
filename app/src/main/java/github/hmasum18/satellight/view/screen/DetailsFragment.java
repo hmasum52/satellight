@@ -1,4 +1,4 @@
-package github.hmasum18.satellight.view.fragment;
+package github.hmasum18.satellight.view.screen;
 
 import android.os.Bundle;
 

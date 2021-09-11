@@ -18,8 +18,8 @@ import com.google.android.material.chip.ChipGroup;
 import java.util.HashMap;
 import java.util.Map;
 
-import github.hmasum18.satellight.view.fragment.GlobeFragment;
-import github.hmasum18.satellight.view.fragment.GoogleMapFragment;
+import github.hmasum18.satellight.view.screen.GlobeFragment;
+import github.hmasum18.satellight.view.screen.googlemap.GoogleMapFragment;
 import github.hmasum18.satellight.view.MainActivity;
 import gov.nasa.worldwind.geom.Position;
 import gov.nasa.worldwind.layer.RenderableLayer;
@@ -149,10 +149,10 @@ public class GlobeUtils {
             Log.w(TAG," selected Sat: "+code);
             if(fragment instanceof  GoogleMapFragment){
                 GoogleMapFragment temp = (GoogleMapFragment) fragment;
-                temp.activeSatDataList = mainActivity.allSatDatFromSSCMap.get(code);
+              /*  temp.activeSatDataList = mainActivity.allSatDatFromSSCMap.get(code);
                 if(temp.activeSatDataList == null)
                     temp.activeSatDataList = mainActivity.allSatelliteData.get(code).getTrajectoryDataList();
-                temp.prevSatCode = mainActivity.activeSatCode;
+                temp.prevSatCode = mainActivity.activeSatCode;*/
                 mainActivity.activeSatCode = code;
                 temp.initSatPosition();
             }else{ //instance of globe fragment

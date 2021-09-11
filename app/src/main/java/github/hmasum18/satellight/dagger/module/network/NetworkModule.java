@@ -1,5 +1,6 @@
 package github.hmasum18.satellight.dagger.module.network;
 
+import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import dagger.Module;
@@ -86,23 +87,41 @@ public abstract class NetworkModule{
         }
     }
 
-    public static class SatelliteDataSource extends RetrofitWrapper{
+    public static class SatelliteDataSource {
+        private final Retrofit retrofit;
+
         public SatelliteDataSource(Retrofit retrofit) {
-            super(retrofit);
+            this.retrofit = retrofit;
+        }
+
+        public Retrofit getRetrofit() {
+            return retrofit;
         }
     }
 
-    public static class CelestrakApi extends RetrofitWrapper{
+    public static class CelestrakApi{
+
+        private final Retrofit retrofit;
 
         public CelestrakApi(Retrofit retrofit) {
-            super(retrofit);
+            this.retrofit = retrofit;
+        }
+
+        public Retrofit getRetrofit() {
+            return retrofit;
         }
     }
 
-    public static class NasaSSCApi extends RetrofitWrapper{
+    public static class NasaSSCApi{
+
+        private final Retrofit retrofit;
 
         public NasaSSCApi(Retrofit retrofit) {
-            super(retrofit);
+            this.retrofit = retrofit;
+        }
+
+        public Retrofit getRetrofit() {
+            return retrofit;
         }
     }
 }

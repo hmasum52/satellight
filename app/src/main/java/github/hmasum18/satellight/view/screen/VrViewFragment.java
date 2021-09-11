@@ -1,4 +1,4 @@
-package github.hmasum18.satellight.view.fragment;
+package github.hmasum18.satellight.view.screen;
 
 import android.content.res.AssetManager;
 import android.graphics.BitmapFactory;
@@ -146,10 +146,10 @@ public class VrViewFragment extends Fragment {
             public void run() {
                 SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd/mm/yyyy,hh:mm:ss aa");
                 String date = simpleDateFormat.format(new Date( System.currentTimeMillis() ) );
-                Log.w(TAG,""+ mainActivity.mDateTV.getText());
+              /*  Log.w(TAG,""+ mainActivity.mDateTV.getText());
                 mainActivity.mDateTV.setText("Date:"+ date+"\n"+String.format("azimuth: %.2f Elevation: %.2f\nSee:\n%s"
                         ,satellite.getHorizontalAngle()+90,satellite.getVerticalAngle()
-                        ,predictDirection(azimuth,elevation)));
+                        ,predictDirection(azimuth,elevation)));*/
 
                 Toast.makeText(getContext(),"See "+predictDirection(azimuth,elevation)
                         +" from your location to find "+ mainActivity.activeSatCode,Toast.LENGTH_LONG).show();

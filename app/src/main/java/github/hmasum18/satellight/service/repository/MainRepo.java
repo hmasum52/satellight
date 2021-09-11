@@ -29,9 +29,6 @@ public class MainRepo{
     SatelliteDao satelliteDao;
 
     @Inject
-    NetworkModule.NasaSSCApi nasaSSCApi;
-
-    @Inject
     NetworkModule.SatelliteDataSource satelliteDataSource;
 
     @Inject

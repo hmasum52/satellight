@@ -1,4 +1,4 @@
-package github.hmasum18.satellight.view.fragment;
+package github.hmasum18.satellight.view.screen;
 
 import android.animation.ValueAnimator;
 import android.os.Bundle;
@@ -210,8 +210,8 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
 
         //fetch data gain for next 20 min
         if(currentIdx>= activeSatDataList.size()-3) {
-            long start = mainActivity.lastRequestedTimestampEnd - 1000 * 60 * 5;
-            long end = mainActivity.lastRequestedTimestampEnd + 1000 * 60 * 20;
+           /* long start = mainActivity.lastRequestedTimestampEnd - 1000 * 60 * 5;
+            long end = mainActivity.lastRequestedTimestampEnd + 1000 * 60 * 20;*/
             //mainViewModel.callForDataAgain(start, end, mainActivity.deviceLatLng);
         }
 
@@ -463,8 +463,8 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
 
             //fetch dat again
             if(idx>= activeSatDataList.size()-3){
-                long start = mainActivity.lastRequestedTimestampEnd - 1000*60*5;
-                long end = mainActivity.lastRequestedTimestampEnd + 1000*60*20;
+                /*long start = mainActivity.lastRequestedTimestampEnd - 1000*60*5;
+                long end = mainActivity.lastRequestedTimestampEnd + 1000*60*20;*/
                // mainViewModel.callForDataAgain(start,end, mainActivity.deviceLatLng);
             }
             moveCamera(position,timestampDiff,"sat",prevData.getVelocity(),data.getVelocity()); //as data difference is 60 sec

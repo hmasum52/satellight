@@ -12,6 +12,7 @@ import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import github.hmasum18.satellight.dagger.anotation.MainActivityScope;
 import github.hmasum18.satellight.service.model.Satellite;
 import github.hmasum18.satellight.service.model.SatelliteData;
 import github.hmasum18.satellight.service.model.TrajectoryData;
@@ -20,7 +21,7 @@ import github.hmasum18.satellight.service.repository.NasaSSCApiRepo;
 
 
 @Singleton
-public class MainViewModel extends ViewModel {
+public class MainViewModel extends ViewModel{
     public static final String TAG = "MainViewModel:";
 
     @Inject

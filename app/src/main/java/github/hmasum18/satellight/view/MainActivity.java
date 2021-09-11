@@ -4,7 +4,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.fragment.app.Fragment;
 import androidx.navigation.NavController;
 import androidx.navigation.NavDestination;
 import androidx.navigation.NavGraph;
@@ -12,7 +11,6 @@ import androidx.navigation.NavInflater;
 import androidx.navigation.Navigation;
 import androidx.navigation.fragment.NavHostFragment;
 
-import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -25,10 +23,9 @@ import android.widget.Toast;
 
 import com.google.android.gms.maps.model.LatLng;
 
-import org.json.JSONObject;
-
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,122 +34,124 @@ import javax.inject.Inject;
 
 import github.hmasum18.satellight.R;
 import github.hmasum18.satellight.dagger.component.AppComponent;
+import github.hmasum18.satellight.databinding.ActivityMainBinding;
 import github.hmasum18.satellight.service.model.SatelliteData;
 import github.hmasum18.satellight.service.model.TrajectoryData;
-import github.hmasum18.satellight.utils.tle.SatelliteJs;
+import github.hmasum18.satellight.utils.Utils;
 import github.hmasum18.satellight.utils.tle.TleToGeo;
+import github.hmasum18.satellight.view.screen.SatelliteListAdapter;
+import github.hmasum18.satellight.view.screen.googlemap.DeviceLocationFinder;
 import github.hmasum18.satellight.viewModel.MainViewModel;
-import github.hmasum18.satellight.view.fragment.GoogleMapFragment;
 
 public class MainActivity extends AppCompatActivity {
 
-    private final static int  PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 101;
+    private final static int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 101;
     public static final String TAG = "MainActivity:";
-    public boolean isLocationPermissionGranted = false;
-    public LatLng deviceLatLng = new LatLng(28.5728816,-80.6500725); //kennedy space center
+
+    ActivityMainBinding mVB;
+
+    @Inject
+    SatelliteListAdapter satelliteListAdapter;
 
     @Inject
     MainViewModel mainViewModel;
-    
+
+    DeviceLocationFinder deviceLocationFinder;
+
     //views datas
     public String activeSatCode = "ISS (ZARYA)"; //this is iss by default but will change when another one selected
     public Map<String, ArrayList<TrajectoryData>> allSatDatFromSSCMap = new HashMap<>();
     public Map<String, SatelliteData> allSatelliteData = new HashMap<>();
-    public long lastRequestedTimestampBegin = 0;
-    public long lastRequestedTimestampEnd = 0;
 
     //views
-    private LinearLayout allViewsLinearLayout;
-    public ProgressBar progressBar;
     public ConstraintLayout mainActvConstrainLayout;
     private NavController navController;
     private Integer activeFragmentId;
-    public ImageButton googleMapIBTN,globeIBTN,modelView3DIBTN,vrViewIBTN;
+    public ImageButton googleMapIBTN, globeIBTN, modelView3DIBTN, vrViewIBTN;
     public Button mDetailsFragBtn;
-    public TextView mSatNameTV,mSatLatTV,mSatLngTV,mSatHeightTV,mSatSpeedTV,mDateTV;
+
+    //data from nasa ssc api
+    ArrayList<String> satCodeList = new ArrayList<>(Arrays.asList(
+            "sun", "moon"
+    ));
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        mVB = ActivityMainBinding.inflate(super.getLayoutInflater());
+        setContentView(mVB.getRoot());
 
         Log.d(TAG, "onCreate: ");
-        
+
         injectDependencies();
-        
+
+        getDeviceLocation();
+
         fetchSatelliteDataFromAppScript();
 
-        mainActvConstrainLayout = findViewById(R.id.mainActv_ConstrainLayout);
-       // mainActvConstrainLayout.setVisibility(View.GONE);
-        progressBar = findViewById(R.id.wave_spinkit);
+        mVB.rvSatelliteList.setAdapter(satelliteListAdapter);
+        satelliteListAdapter.setSearchView(mVB.searchSatellite);
 
-        navController = Navigation.findNavController(this,R.id.mainActv_nav_host_frag );
-        googleMapIBTN = findViewById(R.id.mainAcvt_googleMapIBTN);
-        globeIBTN = findViewById(R.id.mainAcvt_1stPersonViewIBTN);
+        mainActvConstrainLayout = findViewById(R.id.mainActv_ConstrainLayout);
+
+
+        navController = Navigation.findNavController(this, R.id.mainActv_nav_host_frag);
+        googleMapIBTN = findViewById(R.id.mainAcvt_google_map_btn);
+        globeIBTN = findViewById(R.id.mainAcvt_1stPersonView_btn);
         modelView3DIBTN = findViewById(R.id.mainAcvt_webViewIBTN);
-        vrViewIBTN = findViewById(R.id.mainAcvt_vrViewIBTN);
+        vrViewIBTN = findViewById(R.id.mainAcvt_vrView_btn);
 
         mDetailsFragBtn = findViewById(R.id.mainActv_detailsBtn);
 
-        allViewsLinearLayout = findViewById(R.id.allViewsLinearLayout);
-        mSatNameTV = findViewById(R.id.mainActv_satNameTV);
-        mSatLatTV = findViewById(R.id.mainActv_latTV);
-        mSatLngTV = findViewById(R.id.mainActv_lngTV);
-        mSatHeightTV = findViewById(R.id.mainActv_heightTV);
-        mSatSpeedTV = findViewById(R.id.mainActv_speedTV);
-        mDateTV = findViewById(R.id.mainActv_dateTV);
 
         googleMapIBTN.setOnClickListener(v -> {
-            if(activeFragmentId!=R.id.googleMapFragment){
+            if (activeFragmentId != R.id.googleMapFragment) {
                 mDetailsFragBtn.setVisibility(View.VISIBLE);
-                allViewsLinearLayout.setVisibility(View.VISIBLE);
                 navController.navigate(R.id.googleMapFragment);
                 setStartDestination(R.id.googleMapFragment);
             }
         });
 
         globeIBTN.setOnClickListener(v -> {
-            if(activeFragmentId!=R.id.globeFragment){
+            if (activeFragmentId != R.id.globeFragment) {
                 mDetailsFragBtn.setVisibility(View.VISIBLE);
-                allViewsLinearLayout.setVisibility(View.VISIBLE);
                 navController.navigate(R.id.globeFragment);
                 setStartDestination(R.id.globeFragment);
             }
         });
 
         modelView3DIBTN.setOnClickListener(v -> {
-            if(activeFragmentId!=R.id.modelViewFragment
-            &&!activeSatCode.equals("moon")){
+            if (activeFragmentId != R.id.modelViewFragment
+                    && !activeSatCode.equals("moon")) {
                 mDetailsFragBtn.setVisibility(View.GONE);
-                allViewsLinearLayout.setVisibility(View.GONE);
                 navController.navigate(R.id.modelViewFragment);
                 setStartDestination(R.id.modelViewFragment);
-            }else if(activeSatCode.equals("moon")){
-                Toast.makeText(getApplicationContext(),"Moon data not available",Toast.LENGTH_SHORT).show();
+            } else if (activeSatCode.equals("moon")) {
+                Toast.makeText(getApplicationContext(), "Moon data not available", Toast.LENGTH_SHORT).show();
             }
         });
 
         vrViewIBTN.setOnClickListener(v -> {
-            if(activeFragmentId!=R.id.vrViewFragment
-            &&!activeSatCode.equals("moon")){
+            if (activeFragmentId != R.id.vrViewFragment
+                    && !activeSatCode.equals("moon")) {
                 mDetailsFragBtn.setVisibility(View.VISIBLE);
-                allViewsLinearLayout.setVisibility(View.VISIBLE);
                 navController.navigate(R.id.vrViewFragment);
                 setStartDestination(R.id.vrViewFragment);
-            }else if(activeSatCode.equals("moon")){
-                Toast.makeText(getApplicationContext(),"Moon data not available",Toast.LENGTH_SHORT).show();
+            } else if (activeSatCode.equals("moon")) {
+                Toast.makeText(getApplicationContext(), "Moon data not available", Toast.LENGTH_SHORT).show();
             }
         });
 
         mDetailsFragBtn.setOnClickListener(v -> {
-            if(activeFragmentId!=R.id.detailsFragment
-                    &&!activeSatCode.equals("moon")){
+            if (activeFragmentId != R.id.detailsFragment
+                    && !activeSatCode.equals("moon")) {
                 mDetailsFragBtn.setVisibility(View.GONE);
-                allViewsLinearLayout.setVisibility(View.GONE);
                 navController.navigate(R.id.detailsFragment);
                 setStartDestination(R.id.detailsFragment);
-            }else if(activeSatCode.equals("moon")){
-                Toast.makeText(getApplicationContext(),"Moon data not available",Toast.LENGTH_SHORT).show();
+            } else if (activeSatCode.equals("moon")) {
+                Toast.makeText(getApplicationContext(), "Moon data not available", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -160,69 +159,76 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onDestinationChanged(@NonNull NavController controller, @NonNull NavDestination destination, @Nullable Bundle arguments) {
                 activeFragmentId = controller.getCurrentDestination().getId();
-                Log.w(TAG,"acitveFragmentId:"+activeFragmentId);
+                Log.w(TAG, "acitveFragmentId:" + activeFragmentId);
             }
         });
     }
 
+    private void getDeviceLocation() {
+        deviceLocationFinder = new DeviceLocationFinder(getApplicationContext(), this);
+        deviceLocationFinder.requestDeviceLocation(new DeviceLocationFinder.OnDeviceLocationFoundListener() {
+            @Override
+            public void onDeviceLocationFound(LatLng latLng) {
+                Log.d(TAG, "onDeviceLocationFound: " + latLng);
+            }
+        });
+    }
+
+    public DeviceLocationFinder getDeviceLocationFinder() {
+        return deviceLocationFinder;
+    }
+
     private void injectDependencies() {
-        AppComponent appComponent = ((App)getApplication()).getAppComponent();
+        AppComponent appComponent = ((App) getApplication()).getAppComponent();
         appComponent.inject(this);
     }
 
     private void fetchSatelliteDataFromAppScript() {
+
+        fetchSatDataFromSSC(satCodeList);
+
         mainViewModel.getSatelliteDataList()
                 .observe(this, satellites -> {
-                    Log.d(TAG, "fetchSatelliteDataFromAppScript: size: "+satellites.size());
+                    Log.d(TAG, "fetchSatelliteDataFromAppScript: size: " + satellites.size());
+                    satelliteListAdapter.setSatelliteList(satellites);
                 });
     }
 
-    public void updateUI(Map<String,Object> data){
-        SatelliteData satelliteData ;
-        if(!activeSatCode.equals("moon")) {
+    /**
+     * name of the function suggest what it does
+     * @param satCodeList
+     */
+    public void fetchSatDataFromSSC(ArrayList<String> satCodeList) {
+        //fetch satellite data from nasa SSC
+        long t = System.currentTimeMillis();
+        String fromTime = Utils.getTimeAsString(t - (1000 * 60 * 5)); //before 5 min of current timestamp
+        String toTime = Utils.getTimeAsString(t + 1000 * 60 * 20); //after 20 min of current timestamp
+        Log.d(TAG, "SSC API: "+fromTime + " && " + toTime);
+        mainViewModel.getLocationOfSatellite(satCodeList, fromTime, toTime)
+                .observe(this, satelliteBasicDataMap -> {
+            Log.d(TAG, "number of sat data in the map:" + satelliteBasicDataMap.size());
+        });
+    }
+
+    public void updateUI(Map<String, Object> data) {
+        SatelliteData satelliteData;
+        if (!activeSatCode.equals("moon")) {
             satelliteData = allSatelliteData.get(activeSatCode);
-            mSatNameTV.setText("Name:"+data.get("satName")+"\n"+"Country:"+satelliteData.getCountryName());
-        }else {
-            mSatNameTV.setText("Name:"+data.get("satName"));
+        } else {
         }
 
-        mSatLatTV.setText("Lat:"+String.format("%.3f",data.get("lat") ) );
-        mSatLngTV.setText("Lng:"+String.format("%.3f",data.get("lng")) );
-        mSatHeightTV.setText("Height:"+String.format("%.2f",data.get("height"))+"km");
-        mSatSpeedTV.setText("Velocity:"+String.format("%.2f",data.get("velocity"))+"km/h");
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd/mm/yyyy,hh:mm:ss aa");
-        String date = simpleDateFormat.format(new Date( (long)data.get("timestamp") ) );
+        String date = simpleDateFormat.format(new Date((long) data.get("timestamp")));
 
-        mDateTV.setText("Date:"+ date);
 
     }
 
-    public void setStartDestination(Integer fragmentId){
+    public void setStartDestination(Integer fragmentId) {
         NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager().findFragmentById(R.id.mainActv_nav_host_frag);
         NavInflater inflater = navHostFragment.getNavController().getNavInflater();
         NavGraph navGraph = inflater.inflate(R.navigation.main_nav_graph);
         navGraph.setStartDestination(fragmentId);
         navHostFragment.getNavController().setGraph(navGraph);
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        isLocationPermissionGranted = false;
-        Log.w(TAG, "onRequestPermissionsResult");
-        switch (requestCode) {
-            case PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION:
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    isLocationPermissionGranted = true;
-                    //get location and then fetch data
-                    Log.w(TAG, " location permission granted ..requesting device location");
-                    // getDeviceLocation();
-                    Fragment navHosFragment = getSupportFragmentManager().findFragmentById(R.id.mainActv_nav_host_frag);
-                    GoogleMapFragment fragment = (GoogleMapFragment) navHosFragment.getChildFragmentManager().getFragments().get(0);
-                    fragment.getDeviceLocation();
-                }
-        }
     }
 
     @Override
@@ -248,6 +254,6 @@ public class MainActivity extends AppCompatActivity {
 
         TleToGeo.SatelliteTrajectory position = tleToGeo.getSatellitePosition(lat, lng);
 
-        Log.d(TAG, "calculateLLA: "+position);
+        Log.d(TAG, "calculateLLA: " + position);
     }
 }

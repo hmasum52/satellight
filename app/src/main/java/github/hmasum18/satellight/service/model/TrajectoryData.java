@@ -13,8 +13,14 @@ public class TrajectoryData {
     private double velocity;
     private long timestamp;
 
-    public TrajectoryData(TleToGeo.SatelliteTrajectory trajectory){
-
+    public TrajectoryData(String shortName, TleToGeo.SatelliteTrajectory trajectory){
+        this.shortName = shortName;
+        this.lat = trajectory.getLat();
+        this.lng = trajectory.getLng();
+        this.elevation = trajectory.getElevation();
+        this.azimuth = trajectory.getAzimuth();
+        this.height = trajectory.getAlt();
+        this.timestamp = trajectory.getTime().getTime();
     }
 
     //for SSC web service
