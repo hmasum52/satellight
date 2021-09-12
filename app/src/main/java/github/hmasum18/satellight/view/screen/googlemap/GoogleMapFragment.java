@@ -2,6 +2,7 @@ package github.hmasum18.satellight.view.screen.googlemap;
 
 import android.Manifest;
 import android.animation.ValueAnimator;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -34,6 +35,8 @@ import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.material.chip.ChipGroup;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -41,7 +44,9 @@ import java.util.Map;
 import javax.inject.Inject;
 
 import github.hmasum18.satellight.R;
+import github.hmasum18.satellight.dagger.component.ActivityComponent;
 import github.hmasum18.satellight.dagger.component.AppComponent;
+import github.hmasum18.satellight.dagger.module.ActivityModule;
 import github.hmasum18.satellight.databinding.FragmentGoogleMapBinding;
 import github.hmasum18.satellight.service.model.Satellite;
 import github.hmasum18.satellight.service.model.SatelliteTrajectory;
@@ -59,6 +64,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
     //for accessing common method of all the fragments
     MainActivity mainActivity;
 
+    @Inject
     DeviceLocationFinder deviceLocationFinder;
 
     @Inject
@@ -70,7 +76,6 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
 
     //view
     private FragmentGoogleMapBinding mVB;
-    private ChipGroup mSatelliteChipGroup;
 
     private GoogleMap mMap;
     int[] rawMapStyles = {R.raw.dark_map, R.raw.night_map, R.raw.aubergine_map, R.raw.assassins_creed_map};
@@ -89,20 +94,31 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d(TAG, "onCreate: ");
         mainActivity = (MainActivity) this.getActivity();
-        AppComponent appComponent = ((App) mainActivity.getApplication()).getAppComponent();
-        appComponent.inject(this);
 
-        deviceLocationFinder = mainActivity.getDeviceLocationFinder();
+        injectDependencies();
+        mainActivity.activityComponent.inject(this);
+
+       /* deviceLocationFinder = mainActivity.getDeviceLocationFinder();
         if(deviceLocationFinder == null){
             deviceLocationFinder = new DeviceLocationFinder(mainActivity);
             mainActivity.setDeviceLocationFinder(deviceLocationFinder);
-        }
+        }*/
+    }
+
+    private void injectDependencies() {
+        AppComponent appComponent = ((App) mainActivity.getApplication()).getAppComponent();
+        mainActivity.activityComponent = appComponent.activityComponentBuilder()
+                .activityModule(new ActivityModule(mainActivity))
+                .build();
+        mainActivity.activityComponent.inject(this);
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+        Log.d(TAG, "onCreateView: ");
         // Inflate the layout for this fragment
         mVB = FragmentGoogleMapBinding.inflate(inflater, container, false);
         return mVB.getRoot();
@@ -111,8 +127,21 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        Log.d(TAG, "onViewCreated: ");
         // initialize map
         initMap();
+    }
+
+    @Override
+    public void onResume() {
+        Log.d(TAG, "onResume: ");
+        super.onResume();
+    }
+
+    @Override
+    public void onAttach(@NonNull @NotNull Context context) {
+        super.onAttach(context);
+        Log.d(TAG, "onAttach: ");
     }
 
     /**
@@ -377,10 +406,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
     }
 
 
-    @Override
-    public void onResume() {
-        super.onResume();
-    }
+
 
     @Override
     public void onPause() {

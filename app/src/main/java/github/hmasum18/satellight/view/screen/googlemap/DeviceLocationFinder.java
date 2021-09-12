@@ -25,9 +25,11 @@ import com.google.android.gms.tasks.Task;
 
 import javax.inject.Inject;
 
+import github.hmasum18.satellight.dagger.anotation.MainActivityScope;
 import github.hmasum18.satellight.view.App;
 import github.hmasum18.satellight.view.MainActivity;
 
+@MainActivityScope
 public class DeviceLocationFinder {
     //to get the device location
     public final static int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 101;
@@ -35,6 +37,7 @@ public class DeviceLocationFinder {
     private final MainActivity mainActivity;
     private LatLng deviceLatLng = null;
     private OnDeviceLocationFoundListener onDeviceLocationFoundListener;
+
     private LocationCallback locationCallback;
 
     // see : https://developer.android.com/training/permissions/requesting
@@ -44,6 +47,7 @@ public class DeviceLocationFinder {
     private final ActivityResultLauncher<String> requestPermissionLauncher;
 
 
+    @Inject
     public DeviceLocationFinder(MainActivity mainActivity) {
         this.mainActivity = mainActivity;
 

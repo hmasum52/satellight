@@ -37,7 +37,9 @@ import java.util.Map;
 import javax.inject.Inject;
 
 import github.hmasum18.satellight.R;
+import github.hmasum18.satellight.dagger.component.ActivityComponent;
 import github.hmasum18.satellight.dagger.component.AppComponent;
+import github.hmasum18.satellight.dagger.module.ActivityModule;
 import github.hmasum18.satellight.databinding.ActivityMainBinding;
 import github.hmasum18.satellight.service.model.SatelliteData;
 import github.hmasum18.satellight.service.model.SatelliteTrajectory;
@@ -49,9 +51,9 @@ import github.hmasum18.satellight.view.screen.googlemap.DeviceLocationFinder;
 import github.hmasum18.satellight.viewModel.MainViewModel;
 
 public class MainActivity extends AppCompatActivity {
-
-    private final static int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 101;
     public static final String TAG = "MainActivity:";
+
+    public ActivityComponent activityComponent;
 
     ActivityMainBinding mVB;
 
@@ -61,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
     @Inject
     MainViewModel mainViewModel;
 
+    @Inject
     DeviceLocationFinder deviceLocationFinder;
 
     //views datas
@@ -87,11 +90,13 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         mVB = ActivityMainBinding.inflate(super.getLayoutInflater());
         setContentView(mVB.getRoot());
-
         Log.d(TAG, "onCreate: ");
-
-        injectDependencies();
-
+        
+        if(activityComponent == null)
+            injectDependencies();
+        else
+            activityComponent.inject(this);
+        
         getDeviceLocation();
 
         fetchSatelliteDataFromAppScript();
@@ -170,8 +175,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void getDeviceLocation() {
-        if(deviceLocationFinder == null)
-            deviceLocationFinder = new DeviceLocationFinder( this);
+        Log.d(TAG, "getDeviceLocation: ");
         deviceLocationFinder.requestDeviceLocation(new DeviceLocationFinder.OnDeviceLocationFoundListener() {
             @Override
             public void onDeviceLocationFound(LatLng latLng) {
@@ -190,7 +194,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void injectDependencies() {
         AppComponent appComponent = ((App) getApplication()).getAppComponent();
-        appComponent.inject(this);
+        activityComponent = appComponent.activityComponentBuilder()
+                .activityModule(new ActivityModule(this))
+                                            .build();
+        activityComponent.inject(this);
     }
 
     private void fetchSatelliteDataFromAppScript() {
