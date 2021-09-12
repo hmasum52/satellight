@@ -9,6 +9,8 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.view.animation.LinearInterpolator;
 
+import javax.inject.Inject;
+
 import github.hmasum18.satellight.R;
 
 public class MapUtils {

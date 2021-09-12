@@ -1,6 +1,5 @@
 package github.hmasum18.satellight.view;
 
-import androidx.activity.result.ActivityResult;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -12,13 +11,10 @@ import androidx.navigation.NavInflater;
 import androidx.navigation.Navigation;
 import androidx.navigation.fragment.NavHostFragment;
 
-import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
-import android.widget.ImageButton;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.model.LatLng;
@@ -26,7 +22,6 @@ import com.neosensory.tlepredictionengine.Tle;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.security.Permission;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -75,8 +70,6 @@ public class MainActivity extends AppCompatActivity {
     public ConstraintLayout mainActvConstrainLayout;
     private NavController navController;
     private Integer activeFragmentId;
-    public ImageButton googleMapIBTN, globeIBTN, modelView3DIBTN, vrViewIBTN;
-    public Button mDetailsFragBtn;
 
     //data from nasa ssc api
     ArrayList<String> satCodeList = new ArrayList<>(Arrays.asList(
@@ -87,15 +80,16 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.d(TAG, "onCreate: ");
         super.onCreate(savedInstanceState);
+
         mVB = ActivityMainBinding.inflate(super.getLayoutInflater());
         setContentView(mVB.getRoot());
-        Log.d(TAG, "onCreate: ");
+
         
         if(activityComponent == null)
-            injectDependencies();
-        else
-            activityComponent.inject(this);
+            initActivityComponent();
+        activityComponent.inject(this);
         
         getDeviceLocation();
 
@@ -105,65 +99,9 @@ public class MainActivity extends AppCompatActivity {
         satelliteListAdapter.setSearchView(mVB.searchSatellite);
 
         mainActvConstrainLayout = findViewById(R.id.mainActv_ConstrainLayout);
-
-
         navController = Navigation.findNavController(this, R.id.mainActv_nav_host_frag);
-        googleMapIBTN = findViewById(R.id.mainAcvt_google_map_btn);
-        globeIBTN = findViewById(R.id.mainAcvt_1stPersonView_btn);
-        modelView3DIBTN = findViewById(R.id.mainAcvt_webViewIBTN);
-        vrViewIBTN = findViewById(R.id.mainAcvt_vrView_btn);
 
-        mDetailsFragBtn = findViewById(R.id.mainActv_detailsBtn);
-
-
-        googleMapIBTN.setOnClickListener(v -> {
-            if (activeFragmentId != R.id.googleMapFragment) {
-                mDetailsFragBtn.setVisibility(View.VISIBLE);
-                navController.navigate(R.id.googleMapFragment);
-                setStartDestination(R.id.googleMapFragment);
-            }
-        });
-
-        globeIBTN.setOnClickListener(v -> {
-            if (activeFragmentId != R.id.globeFragment) {
-                mDetailsFragBtn.setVisibility(View.VISIBLE);
-                navController.navigate(R.id.globeFragment);
-                setStartDestination(R.id.globeFragment);
-            }
-        });
-
-        modelView3DIBTN.setOnClickListener(v -> {
-            if (activeFragmentId != R.id.modelViewFragment
-                    && !activeSatCode.equals("moon")) {
-                mDetailsFragBtn.setVisibility(View.GONE);
-                navController.navigate(R.id.modelViewFragment);
-                setStartDestination(R.id.modelViewFragment);
-            } else if (activeSatCode.equals("moon")) {
-                Toast.makeText(getApplicationContext(), "Moon data not available", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        vrViewIBTN.setOnClickListener(v -> {
-            if (activeFragmentId != R.id.vrViewFragment
-                    && !activeSatCode.equals("moon")) {
-                mDetailsFragBtn.setVisibility(View.VISIBLE);
-                navController.navigate(R.id.vrViewFragment);
-                setStartDestination(R.id.vrViewFragment);
-            } else if (activeSatCode.equals("moon")) {
-                Toast.makeText(getApplicationContext(), "Moon data not available", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        mDetailsFragBtn.setOnClickListener(v -> {
-            if (activeFragmentId != R.id.detailsFragment
-                    && !activeSatCode.equals("moon")) {
-                mDetailsFragBtn.setVisibility(View.GONE);
-                navController.navigate(R.id.detailsFragment);
-                setStartDestination(R.id.detailsFragment);
-            } else if (activeSatCode.equals("moon")) {
-                Toast.makeText(getApplicationContext(), "Moon data not available", Toast.LENGTH_SHORT).show();
-            }
-        });
+        initNavigationButtons();
 
         navController.addOnDestinationChangedListener(new NavController.OnDestinationChangedListener() {
             @Override
@@ -174,6 +112,14 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    public void initActivityComponent() {
+        AppComponent appComponent = ((App) getApplication()).getAppComponent();
+        activityComponent = appComponent.activityComponentBuilder()
+                .activityModule(new ActivityModule(this))
+                .build();
+    }
+
+
     private void getDeviceLocation() {
         Log.d(TAG, "getDeviceLocation: ");
         deviceLocationFinder.requestDeviceLocation(new DeviceLocationFinder.OnDeviceLocationFoundListener() {
@@ -182,22 +128,6 @@ public class MainActivity extends AppCompatActivity {
                 Log.d(TAG, "onDeviceLocationFound: " + latLng);
             }
         });
-    }
-
-    public void setDeviceLocationFinder(DeviceLocationFinder deviceLocationFinder) {
-        this.deviceLocationFinder = deviceLocationFinder;
-    }
-
-    public DeviceLocationFinder getDeviceLocationFinder() {
-        return deviceLocationFinder;
-    }
-
-    private void injectDependencies() {
-        AppComponent appComponent = ((App) getApplication()).getAppComponent();
-        activityComponent = appComponent.activityComponentBuilder()
-                .activityModule(new ActivityModule(this))
-                                            .build();
-        activityComponent.inject(this);
     }
 
     private void fetchSatelliteDataFromAppScript() {
@@ -233,11 +163,8 @@ public class MainActivity extends AppCompatActivity {
             satelliteData = allSatelliteData.get(activeSatCode);
         } else {
         }
-
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd/mm/yyyy,hh:mm:ss aa");
         String date = simpleDateFormat.format(new Date((long) data.get("timestamp")));
-
-
     }
 
     public void setStartDestination(Integer fragmentId) {
@@ -249,10 +176,72 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onResume() {
-        super.onResume();
-        Log.d(TAG, "onResume: ");
-        //calculateLLA();
+    public void onRequestPermissionsResult(int requestCode, @NonNull @NotNull String[] permissions, @NonNull @NotNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        Log.d(TAG, "onRequestPermissionsResult: code: "+requestCode);
+        Log.d(TAG, "onRequestPermissionsResult: length: "+permissions.length);
+        for (String s :
+                permissions) {
+            Log.d(TAG, "onRequestPermissionsResult: "+s);
+            if(s.equals("android.permission.ACCESS_FINE_LOCATION")){
+                if (grantResults.length > 0
+                        && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                    finish();
+                }
+            }
+        }
+    }
+
+    private void initNavigationButtons() {
+        mVB.mainAcvtGoogleMapBtn.setOnClickListener(v -> {
+            if (activeFragmentId != R.id.googleMapFragment) {
+                mVB.mainActvDetailsBtn.setVisibility(View.VISIBLE);
+                navController.navigate(R.id.googleMapFragment);
+                setStartDestination(R.id.googleMapFragment);
+            }
+        });
+
+        mVB.mainAcvt1stPersonViewBtn.setOnClickListener(v -> {
+            if (activeFragmentId != R.id.globeFragment) {
+                mVB.mainActvDetailsBtn.setVisibility(View.VISIBLE);
+                navController.navigate(R.id.globeFragment);
+                setStartDestination(R.id.globeFragment);
+            }
+        });
+
+        mVB.mainAcvtWebViewIBTN.setOnClickListener(v -> {
+            if (activeFragmentId != R.id.modelViewFragment
+                    && !activeSatCode.equals("moon")) {
+                mVB.mainActvDetailsBtn.setVisibility(View.GONE);
+                navController.navigate(R.id.modelViewFragment);
+                setStartDestination(R.id.modelViewFragment);
+            } else if (activeSatCode.equals("moon")) {
+                Toast.makeText(getApplicationContext(), "Moon data not available", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        mVB.mainAcvtVrViewBtn.setOnClickListener(v -> {
+            if (activeFragmentId != R.id.vrViewFragment
+                    && !activeSatCode.equals("moon")) {
+                mVB.mainActvDetailsBtn.setVisibility(View.VISIBLE);
+                navController.navigate(R.id.vrViewFragment);
+                setStartDestination(R.id.vrViewFragment);
+            } else if (activeSatCode.equals("moon")) {
+                Toast.makeText(getApplicationContext(), "Moon data not available", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        mVB.mainActvDetailsBtn.setOnClickListener(v -> {
+            if (activeFragmentId != R.id.detailsFragment
+                    && !activeSatCode.equals("moon")) {
+                mVB.mainActvDetailsBtn.setVisibility(View.GONE);
+                navController.navigate(R.id.detailsFragment);
+                setStartDestination(R.id.detailsFragment);
+            } else if (activeSatCode.equals("moon")) {
+                Toast.makeText(getApplicationContext(), "Moon data not available", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     public void calculateLLA() {
@@ -274,21 +263,5 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "calculateLLA: " + position);
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull @NotNull String[] permissions, @NonNull @NotNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        Log.d(TAG, "onRequestPermissionsResult: code: "+requestCode);
-        Log.d(TAG, "onRequestPermissionsResult: length: "+permissions.length);
-        for (String s :
-                permissions) {
-            Log.d(TAG, "onRequestPermissionsResult: "+s);
-            if(s.equals("android.permission.ACCESS_FINE_LOCATION")){
-                if (grantResults.length > 0
-                        && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                    finish();
-                }
-            }
-        }
-    }
 }
