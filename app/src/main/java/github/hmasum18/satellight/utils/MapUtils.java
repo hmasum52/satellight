@@ -36,16 +36,16 @@ public class MapUtils {
 
 
     public static ValueAnimator polyLineAnimator(){
-        ValueAnimator valueAnimator = ValueAnimator.ofInt(0,100);
+        ValueAnimator valueAnimator = ValueAnimator.ofInt(0,10);
         valueAnimator.setInterpolator(new LinearInterpolator());
         valueAnimator.setDuration(30000);
         return valueAnimator;
     }
 
-    public static ValueAnimator satelliteAnimation(){
-        ValueAnimator valueAnimator = ValueAnimator.ofFloat(0,1f);
+    public static ValueAnimator satelliteAnimation(long duration){
+        ValueAnimator valueAnimator = ValueAnimator.ofInt(0,(int)(duration/1000.0));
         valueAnimator.setInterpolator(new LinearInterpolator());
-        valueAnimator.setDuration(30000);
+        valueAnimator.setDuration(duration);
         return valueAnimator;
     }
 }

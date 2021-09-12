@@ -176,16 +176,14 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
     private void getSelectedSatelliteData() {
         Log.d(TAG, "getSelectedSatelliteData: ");
         satelliteListAdapter.setSelectedSatelliteUpdateListener(selectedSatellite -> {
-            if(selectedSatellite == null)
+            if (selectedSatellite == null)
                 return;
-            Log.d(TAG, "getSelectedSatelliteData: selected satellite: "+selectedSatellite.getName());
-            startPoint = getSatelliteTrajectoryData(System.currentTimeMillis());
-            endPoint = getSatelliteTrajectoryData(System.currentTimeMillis()+timeIntervalBetweenTwoData);
+            Log.d(TAG, "getSelectedSatelliteData: selected satellite: " + selectedSatellite.getName());
             initSatPosition();
         });
     }
 
-    private SatelliteTrajectory getSatelliteTrajectoryData(long timestamp){
+    private SatelliteTrajectory getSatelliteTrajectoryData(long timestamp) {
         Log.d(TAG, "updateTrajectoryData: ");
         Tle tle = satelliteListAdapter.getSelectedSatellite().extractTle();
         return TleToGeo.getSatellitePosition(tle, timestamp, deviceLocationFinder.getDeviceLatLng());
@@ -199,7 +197,6 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
         if (activeSatAnimator != null && activeSatAnimator.isRunning()) {
             Log.d(TAG, "Previous satellite animator is removed");
             activeSatAnimator.end();
-            activeSatAnimator = null;
         }
 
         // remove all the polyline drawn for previous satellite
@@ -210,16 +207,33 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
 
         // add satellite marker in startPoint
         // init new selected satellite position.
-        updateSatelliteLocation( 0);
+        startPoint = getSatelliteTrajectoryData(System.currentTimeMillis());
+        endPoint = getSatelliteTrajectoryData(System.currentTimeMillis() + timeIntervalBetweenTwoData);
+
+        addNewSatelliteToMap(startPoint.getLatLng());
 
         // start moving the satellite in separate thread
         new Handler().post(() -> {
             satelliteMoving = true;
-            updateSatelliteLocation(timeIntervalBetweenTwoData);
+            updateSatelliteLocation(startPoint, endPoint, timeIntervalBetweenTwoData);
             // call the recursive function to animate
             // after time interval between 2 data.
             moveSatellite();
         });
+    }
+
+    private void addNewSatelliteToMap(LatLng latLng) {
+        if (movingSatelliteMarker != null)
+            movingSatelliteMarker.remove(); // remove the previous marker to redraw the marker
+
+        // draw new satellite
+        movingSatelliteMarker = addSatelliteMarker(latLng);
+
+        movingSatelliteMarker.setPosition(latLng);
+        movingSatelliteMarker.setAnchor(0.4f, 0.4f);
+
+        // animate and move camera to new lat lng
+        animateCamera(latLng);
     }
 
     /**
@@ -230,77 +244,53 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
             return;
         }
 
-        new Handler().postDelayed(()->{
+        new Handler().postDelayed(() -> {
+            if (activeSatAnimator != null && activeSatAnimator.isRunning()) {
+                activeSatAnimator.end();
+            }
+
             // next end point
             startPoint = endPoint;
-            endPoint = getSatelliteTrajectoryData(endPoint.getTime().getTime()+timeIntervalBetweenTwoData);
-            updateSatelliteLocation(timeIntervalBetweenTwoData);
-            moveSatellite();
-        },  timeIntervalBetweenTwoData);
+            endPoint = getSatelliteTrajectoryData(
+                    endPoint.getTime().getTime() + timeIntervalBetweenTwoData);
+            updateSatelliteLocation(startPoint, endPoint, timeIntervalBetweenTwoData);
+            moveSatellite(); 
+        }, timeIntervalBetweenTwoData);
     }
 
     /**
      * update the satellite location which help us to achieve the satellite animation
      */
-    private void updateSatelliteLocation(long durationMilli) {
-        Log.d(TAG, "updateSatelliteLocation: ");
-        // moveCamera(trajectoryData.getLatLng(), 0f);
-        if (movingSatelliteMarker != null)
-            movingSatelliteMarker.remove(); // remove the previous marker to redraw the marker
+    private void updateSatelliteLocation(SatelliteTrajectory from, SatelliteTrajectory to, long durationMilli) {
+        movingSatelliteMarker.setPosition(from.getLatLng());
+        movingSatelliteMarker.setAnchor(0.4f, 0.4f);
 
-        // draw new satellite
-        movingSatelliteMarker = addSatelliteAndGet(startPoint.getLatLng());
+        activeSatAnimator = MapUtils.satelliteAnimation(durationMilli);
+        activeSatAnimator.addUpdateListener(animation -> {
+            if (satelliteMoving) {
+                double multiplier = ((int)animation.getAnimatedValue()/(durationMilli/1000.0));
+                //Log.d(TAG, "updateSatelliteLocation: animated fraction: "+multiplier);
+                //Log.d(TAG, "updateSatelliteLocation: animated value: "+animation.getAnimatedValue());
 
-        Log.d(TAG, "updateSatelliteLocation: satelliteMoving: "+satelliteMoving);
+                //ease in the value
+                LatLng nextLocation = new LatLng(
+                        multiplier * to.getLat() + (1 - multiplier) * from.getLat(),
+                        multiplier * to.getLng() + (1 - multiplier) * from.getLng()
+                );
 
-        if(!satelliteMoving) {
-            movingSatelliteMarker.setPosition(startPoint.getLatLng());
-            movingSatelliteMarker.setAnchor(0.4f, 0.4f);
+                double nextHeight = multiplier * to.getHeight() + (1 - multiplier) * from.getHeight();
+                double nextVelocity = multiplier * to.getSpeed() + (1 - multiplier) * from.getSpeed();
 
-            // animate and move camera to new lat lng
-            animateCamera(startPoint.getLatLng());
-        } else {
-            movingSatelliteMarker.setPosition(startPoint.getLatLng());
-            movingSatelliteMarker.setAnchor(0.4f, 0.4f);
+                movingSatelliteMarker.setPosition(nextLocation);
+                movingSatelliteMarker.setAnchor(0.5f, 0.5f);
 
-            activeSatAnimator = MapUtils.satelliteAnimation();
-            activeSatAnimator.setDuration(durationMilli);
-            activeSatAnimator.addUpdateListener(animation -> {
-                if (endPoint != null) {
-                    if (satelliteMoving){
-                        double multiplier = animation.getAnimatedFraction();
-
-                        //ease in the value
-                        LatLng nextLocation = new LatLng(
-                                multiplier * endPoint.getLat() + (1 - multiplier) * startPoint.getLat(),
-                                multiplier * endPoint.getLng() + (1 - multiplier) * startPoint.getLng()
-                        );
-
-                        double nextHeight = multiplier * endPoint.getHeight() + (1 - multiplier) * startPoint.getHeight();
-                        double nextVelocity = multiplier * endPoint.getSpeed() + (1 - multiplier) * startPoint.getSpeed();
-
-                        movingSatelliteMarker.setPosition(nextLocation);
-                        movingSatelliteMarker.setAnchor(0.5f, 0.5f);
-
-                        /*Map<String, Object> dataMap = new HashMap<>();
-                        dataMap.put("satName", mainActivity.activeSatCode);
-                        dataMap.put("lat", nextLocation.latitude);
-                        dataMap.put("lng", nextLocation.longitude);
-                        dataMap.put("height", nextHeight);
-                        dataMap.put("velocity", nextVelocity);
-                        dataMap.put("timestamp", System.currentTimeMillis());
-                        mainActivity.updateUI(dataMap);*/
-
-                        //animateCamera(nextLocation);
-                        // moveCamera(nextLocation,0f);
-                        addLineBetweenTwoPoints(new LatLng(startPoint.getLat(), startPoint.getLng()), nextLocation);
-                    }
-                }
-            });
-            activeSatAnimator.start();
-        }
+                // animateCamera(nextLocation);
+                // moveCamera(nextLocation,0f);
+                addLineBetweenTwoPoints(from.getLatLng(), nextLocation);
+            }
+        });
+        activeSatAnimator.start();
     }
-
 
 
     /**
@@ -320,10 +310,10 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
      * @param latLng
      * @return
      */
-    private Marker addSatelliteAndGet(LatLng latLng) {
+    private Marker addSatelliteMarker(LatLng latLng) {
         Log.d(TAG, "addSatelliteAndGet: ");
         BitmapDescriptor defaultSatBitmapDescriptor = BitmapDescriptorFactory.fromBitmap(MapUtils.getSatelliteBitmap(mainActivity));
-       // BitmapDescriptor urlSatBitmapDescriptor = getMarkerIconFromDrawable(GlobeUtils.satelliteIconMap.get(name));
+        // BitmapDescriptor urlSatBitmapDescriptor = getMarkerIconFromDrawable(GlobeUtils.satelliteIconMap.get(name));
 
         //if satellite image is not loaded from the link use the default satellite image as descriptor for marker
         BitmapDescriptor bitmapDescriptor = /*urlSatBitmapDescriptor != null ? urlSatBitmapDescriptor :*/ defaultSatBitmapDescriptor;
@@ -347,6 +337,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
 
     /**
      * animate and move camera
+     *
      * @param latLng is the end destination from current position.
      */
     public void animateCamera(LatLng latLng) {
