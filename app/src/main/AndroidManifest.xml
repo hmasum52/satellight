@@ -30,7 +30,6 @@
             android:value="@string/google_maps_key" />
 
         <activity
-            android:screenOrientation="landscape"
             android:name=".view.MainActivity"
            >
             <intent-filter>

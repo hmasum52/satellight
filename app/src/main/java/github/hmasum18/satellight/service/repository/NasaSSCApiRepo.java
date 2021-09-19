@@ -20,7 +20,7 @@ import java.util.TimeZone;
 import javax.inject.Inject;
 
 import github.hmasum18.satellight.dagger.anotation.MainActivityScope;
-import github.hmasum18.satellight.dagger.module.network.NetworkModule;
+import github.hmasum18.satellight.dagger.module.NetworkModule;
 import github.hmasum18.satellight.service.api.ApiCaller;
 import github.hmasum18.satellight.service.api.OnFinishListener;
 import github.hmasum18.satellight.service.model.TrajectoryData;

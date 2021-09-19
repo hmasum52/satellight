@@ -4,7 +4,6 @@ import android.util.Log;
 
 import androidx.lifecycle.LiveData;
 
-import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 
 import org.json.JSONObject;
@@ -16,7 +15,7 @@ import java.util.concurrent.ExecutorService;
 import javax.inject.Inject;
 
 import github.hmasum18.satellight.dagger.anotation.MainActivityScope;
-import github.hmasum18.satellight.dagger.module.network.NetworkModule;
+import github.hmasum18.satellight.dagger.module.NetworkModule;
 import github.hmasum18.satellight.service.api.ApiCaller;
 import github.hmasum18.satellight.service.api.OnFinishListener;
 import github.hmasum18.satellight.service.model.Satellite;

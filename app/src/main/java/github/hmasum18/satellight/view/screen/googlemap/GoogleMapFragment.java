@@ -89,17 +89,12 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
     public ViewPropertyAnimator satelliteAnimation;
 
     @Override
-    public void onAttach(@NonNull @NotNull Context context) {
-        super.onAttach(context);
-        Log.d(TAG, "onAttach: ");
-    }
-
-    @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate: ");
         mainActivity = (MainActivity) this.getActivity();
-        mainActivity.initActivityComponent();
+        if(mainActivity.activityComponent==null)
+            mainActivity.initActivityComponent();
         mainActivity.activityComponent.inject(this);
     }
 

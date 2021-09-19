@@ -1,9 +1,6 @@
 package github.hmasum18.satellight.utils;
 
-import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.graphics.drawable.Drawable;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -12,15 +9,11 @@ import androidx.fragment.app.Fragment;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.target.CustomTarget;
 import com.bumptech.glide.request.transition.Transition;
-import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import github.hmasum18.satellight.view.screen.GlobeFragment;
-import github.hmasum18.satellight.view.screen.googlemap.GoogleMapFragment;
-import github.hmasum18.satellight.view.MainActivity;
 import gov.nasa.worldwind.geom.Position;
 import gov.nasa.worldwind.layer.RenderableLayer;
 import gov.nasa.worldwind.render.ImageSource;

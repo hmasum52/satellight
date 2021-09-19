@@ -1,4 +1,4 @@
-package github.hmasum18.satellight.dagger.module.network;
+package github.hmasum18.satellight.dagger.module;
 
 import javax.inject.Singleton;
 

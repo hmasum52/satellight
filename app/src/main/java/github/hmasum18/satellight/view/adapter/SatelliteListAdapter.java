@@ -23,6 +23,7 @@ import javax.inject.Singleton;
 import github.hmasum18.satellight.R;
 import github.hmasum18.satellight.databinding.CardSatelliteBinding;
 import github.hmasum18.satellight.service.model.Satellite;
+import github.hmasum18.satellight.view.MainActivity;
 import github.hmasum18.satellight.view.OnSelectedSatelliteUpdateListener;
 
 @Singleton
@@ -30,19 +31,29 @@ public class SatelliteListAdapter extends RecyclerView.Adapter<SatelliteListAdap
     private static final String TAG = "SatelliteListAdapter";
     private List<Satellite> satelliteList = new ArrayList<>();
     private List<Satellite> filteredList = new ArrayList<>();
-    private SearchView searchView;
 
     private Satellite selectedSatellite = null;
-    private OnSelectedSatelliteUpdateListener selectedSatelliteUpdateListener;
+    private OnSelectedSatelliteUpdateListener selectedSatelliteUpdateListener; // only on can listen
+    private OnSelectedSatelliteUpdateListener mainActivityListener;
+
 
     @Inject
-    public SatelliteListAdapter() {
+    public SatelliteListAdapter(){
+    }
+
+    public void setMainActivityListener(OnSelectedSatelliteUpdateListener mainActivityListener) {
+        this.mainActivityListener = mainActivityListener;
     }
 
     public void setSelectedSatellite(Satellite selectedSatellite) {
         this.selectedSatellite = selectedSatellite;
-        if(selectedSatelliteUpdateListener!=null)
+        if(selectedSatelliteUpdateListener!=null) {
             selectedSatelliteUpdateListener.onSelectedSatelliteUpdate(selectedSatellite);
+
+            //notify main activity the change
+            if(mainActivityListener!=null)
+                mainActivityListener.onSelectedSatelliteUpdate(selectedSatellite);
+        }
         super.notifyDataSetChanged();
     }
 
@@ -57,7 +68,6 @@ public class SatelliteListAdapter extends RecyclerView.Adapter<SatelliteListAdap
     }
 
     public void setSearchView(SearchView searchView) {
-        this.searchView = searchView;
 
         // search for problem
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {

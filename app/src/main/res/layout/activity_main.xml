@@ -1,50 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:id="@+id/drawer"
     tools:context=".view.MainActivity">
-
-    <!-- Container for contents of drawer - use NavigationView to make configuration easier -->
-    <com.google.android.material.navigation.NavigationView
-        android:id="@+id/nav_view"
-        android:layout_width="0dp"
-        android:layout_weight="1.5"
-        android:layout_height="match_parent"
-        android:layout_gravity="start"
-        app:elevation="2dp">
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical">
-            <androidx.appcompat.widget.SearchView
-                android:id="@+id/search_satellite"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:iconifiedByDefault="false"
-                android:imeOptions="flagNoExtractUi"
-                />
-            <androidx.recyclerview.widget.RecyclerView
-                android:layout_marginTop="8dp"
-                android:id="@+id/rv_satellite_list"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                tools:itemCount="9"
-                tools:listitem="@layout/card_satellite"
-                />
-        </LinearLayout>
-    </com.google.android.material.navigation.NavigationView>
 
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/mainActv_ConstrainLayout"
-        android:layout_width="0dp"
-        android:layout_weight="5"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginStart="8dp"
         >
+
         <fragment
             android:id="@+id/mainActv_nav_host_frag"
             android:name="androidx.navigation.fragment.NavHostFragment"
@@ -55,6 +25,18 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:navGraph="@navigation/main_nav_graph"
             tools:layout_editor_absoluteY="-63dp" />
+
+        <ImageButton
+            android:id="@+id/drawer_menu"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="24dp"
+            android:background="@android:color/transparent"
+            android:src="@drawable/ic_baseline_menu_24"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@android:color/white" />
 
         <LinearLayout
             android:id="@+id/linearLayout"
@@ -89,28 +71,41 @@
                 android:backgroundTint="@color/colorPrimaryDark"
                 android:src="@drawable/ic_vr" />
 
-            <ImageButton
-                android:id="@+id/mainAcvt_webViewIBTN"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:backgroundTint="@color/colorPrimaryDark"
-                android:src="@drawable/ic_web" />
-
-
         </LinearLayout>
-
-        <Button
-            android:id="@+id/mainActv_detailsBtn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Details"
-            app:layout_constraintBottom_toTopOf="@+id/linearLayout"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintVertical_bias="0.0" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 
-</LinearLayout>
+    <!-- Container for contents of drawer - use NavigationView to make configuration easier -->
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/nav_view"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:fitsSystemWindows="true">
+        <LinearLayout
+            android:layout_marginTop="24dp"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+            <androidx.appcompat.widget.SearchView
+                android:id="@+id/search_satellite"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:iconifiedByDefault="false"
+                android:imeOptions="flagNoExtractUi"
+                />
+            <androidx.recyclerview.widget.RecyclerView
+                android:layout_marginTop="8dp"
+                android:id="@+id/rv_satellite_list"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:itemCount="9"
+                tools:listitem="@layout/card_satellite"
+                />
+        </LinearLayout>
+    </com.google.android.material.navigation.NavigationView>
+
+</androidx.drawerlayout.widget.DrawerLayout>
 
 

@@ -1,11 +1,10 @@
 package github.hmasum18.satellight.dagger.component;
 
-import dagger.BindsInstance;
 import dagger.Subcomponent;
 import github.hmasum18.satellight.dagger.anotation.MainActivityScope;
 import github.hmasum18.satellight.dagger.module.ActivityModule;
 import github.hmasum18.satellight.view.MainActivity;
-import github.hmasum18.satellight.view.screen.GlobeFragment;
+import github.hmasum18.satellight.view.screen.globe.GlobeFragment;
 import github.hmasum18.satellight.view.screen.googlemap.GoogleMapFragment;
 
 @MainActivityScope

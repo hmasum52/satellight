@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/globeFragment"
-        android:name="github.hmasum18.satellight.view.screen.GlobeFragment"
+        android:name="github.hmasum18.satellight.view.screen.globe.GlobeFragment"
         android:label="fragment_globe"
         tools:layout="@layout/fragment_globe" />
     <fragment
@@ -15,11 +15,6 @@
         android:name="github.hmasum18.satellight.view.screen.googlemap.GoogleMapFragment"
         android:label="fragment_google_map"
         tools:layout="@layout/fragment_google_map" />
-    <fragment
-        android:id="@+id/modelViewFragment"
-        android:name="github.hmasum18.satellight.view.screen.WebViewFragment"
-        android:label="fragment_model_view"
-        tools:layout="@layout/fragment_model_view" />
     <fragment
         android:id="@+id/vrViewFragment"
         android:name="github.hmasum18.satellight.view.screen.VrViewFragment"

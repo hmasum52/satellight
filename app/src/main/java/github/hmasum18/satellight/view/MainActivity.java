@@ -3,6 +3,7 @@ package github.hmasum18.satellight.view;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.GravityCompat;
 import androidx.navigation.NavController;
 import androidx.navigation.NavDestination;
 import androidx.navigation.NavGraph;
@@ -65,11 +66,6 @@ public class MainActivity extends AppCompatActivity {
     private NavController navController;
     private Integer activeFragmentId;
 
-    //data from nasa ssc api
-    ArrayList<String> satCodeList = new ArrayList<>(Arrays.asList(
-            "sun", "moon"
-    ));
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,16 +80,15 @@ public class MainActivity extends AppCompatActivity {
             initActivityComponent();
         activityComponent.inject(this);
 
-        getDeviceLocation();
-
         fetchInitialData();
 
-        mVB.rvSatelliteList.setAdapter(satelliteListAdapter);
-        satelliteListAdapter.setSearchView(mVB.searchSatellite);
+        initSatelliteListAdapter();
 
         navController = Navigation.findNavController(this, R.id.mainActv_nav_host_frag);
 
         initNavigationButtons();
+
+        bindHamburgerWithDrawer();
 
         navController.addOnDestinationChangedListener(new NavController.OnDestinationChangedListener() {
             @Override
@@ -103,6 +98,28 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
+    private void initSatelliteListAdapter(){
+        mVB.rvSatelliteList.setAdapter(satelliteListAdapter);
+        satelliteListAdapter.setSearchView(mVB.searchSatellite);
+        satelliteListAdapter.setMainActivityListener(satellite -> {
+            if(mVB.drawer.isDrawerOpen(GravityCompat.START)){
+                mVB.drawer.closeDrawer(GravityCompat.START);
+            }
+        });
+    }
+
+    private void bindHamburgerWithDrawer(){
+        mVB.drawerMenu.setOnClickListener(v -> {
+            if(mVB.drawer.isDrawerOpen(GravityCompat.START)){
+                mVB.drawer.closeDrawer(GravityCompat.START);
+            }
+            else {
+                mVB.drawer.openDrawer(GravityCompat.START);
+            }
+        });
+    }
+
 
     public void initActivityComponent() {
         AppComponent appComponent = ((App) getApplication()).getAppComponent();
@@ -123,6 +140,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void fetchInitialData() {
+        //data from nasa ssc api
+        ArrayList<String> satCodeList = new ArrayList<>(Arrays.asList(
+                "sun", "moon"
+        ));
 
         fetchSatDataFromSSC(satCodeList);
 
@@ -181,41 +202,23 @@ public class MainActivity extends AppCompatActivity {
     private void initNavigationButtons() {
         mVB.mainAcvtGoogleMapBtn.setOnClickListener(v -> {
             if (activeFragmentId != R.id.googleMapFragment) {
-                mVB.mainActvDetailsBtn.setVisibility(View.VISIBLE);
-                navController.navigate(R.id.googleMapFragment);
                 setStartDestination(R.id.googleMapFragment);
+                navController.navigate(R.id.googleMapFragment);
             }
         });
 
         mVB.mainAcvt1stPersonViewBtn.setOnClickListener(v -> {
             if (activeFragmentId != R.id.globeFragment) {
-                mVB.mainActvDetailsBtn.setVisibility(View.VISIBLE);
-                navController.navigate(R.id.globeFragment);
                 setStartDestination(R.id.globeFragment);
-            }
-        });
-
-        mVB.mainAcvtWebViewIBTN.setOnClickListener(v -> {
-            if (activeFragmentId != R.id.modelViewFragment) {
-                mVB.mainActvDetailsBtn.setVisibility(View.GONE);
-                navController.navigate(R.id.modelViewFragment);
-                setStartDestination(R.id.modelViewFragment);
+                navController.navigate(R.id.globeFragment);
             }
         });
 
         mVB.mainAcvtVrViewBtn.setOnClickListener(v -> {
             if (activeFragmentId != R.id.vrViewFragment) {
-                mVB.mainActvDetailsBtn.setVisibility(View.VISIBLE);
-                navController.navigate(R.id.vrViewFragment);
-                setStartDestination(R.id.vrViewFragment);
-            }
-        });
 
-        mVB.mainActvDetailsBtn.setOnClickListener(v -> {
-            if (activeFragmentId != R.id.detailsFragment) {
-                mVB.mainActvDetailsBtn.setVisibility(View.GONE);
-                navController.navigate(R.id.detailsFragment);
-                setStartDestination(R.id.detailsFragment);
+                setStartDestination(R.id.vrViewFragment);
+                navController.navigate(R.id.vrViewFragment);
             }
         });
     }
