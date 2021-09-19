@@ -55,6 +55,5 @@ public class WebViewFragment extends Fragment {
             }
         });
         webView.loadUrl("https://satellight.netlify.app/");
-        //webView.loadUrl(NetworkModule.SATELLITE_DATA_URL+"data.json");
     }
 }

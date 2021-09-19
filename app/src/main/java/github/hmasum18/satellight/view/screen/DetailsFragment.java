@@ -16,7 +16,7 @@ import android.widget.TextView;
 import com.bumptech.glide.Glide;
 
 import github.hmasum18.satellight.R;
-import github.hmasum18.satellight.service.model.SatelliteData;
+import github.hmasum18.satellight.service.model.Satellite;
 import github.hmasum18.satellight.view.MainActivity;
 
 
@@ -24,7 +24,7 @@ public class DetailsFragment extends Fragment {
 
     MainActivity mainActivity;
     //data
-    SatelliteData satelliteData;
+    Satellite satelliteData;
 
     //views
     private ImageView mCountryFlag;
@@ -45,8 +45,8 @@ public class DetailsFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         //data
-        if(!mainActivity.activeSatCode.equals("moon"))
-        satelliteData = mainActivity.allSatelliteData.get(mainActivity.activeSatCode);
+        //if(!mainActivity.activeSatCode.equals("moon"))
+       // satelliteData = mainActivity.allSatelliteData.get(mainActivity.activeSatCode);
 
         // Inflate the layout for this fragment
         View rootView =  inflater.inflate(R.layout.fragment_details, container, false);
@@ -64,11 +64,11 @@ public class DetailsFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         Glide.with(this)
-                .load(satelliteData.getCountryFlagLink())
+                .load(satelliteData.getCountryFlag())
                 .into(mCountryFlag);
 
         StringBuilder basicInfo = new StringBuilder();
-        basicInfo.append(satelliteData.getFullName()).append("\n\n");
+        basicInfo.append(satelliteData.getName()).append("\n\n");
         basicInfo.append("Country: ").append(satelliteData.getCountryName()).append("\n");
         basicInfo.append("Type: ").append(satelliteData.getType()).append("\n\n");
         basicInfo.append("Launch Date: ").append(satelliteData.getLaunchDate()).append("\n");;

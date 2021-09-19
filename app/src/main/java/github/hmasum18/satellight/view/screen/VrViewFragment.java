@@ -99,7 +99,7 @@ public class VrViewFragment extends Fragment {
             new Handler().postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(getContext(),"Connected Successfully. Determining the location of "+ mainActivity.activeSatCode+" in 3d space.",Toast.LENGTH_LONG).show();
+                    //Toast.makeText(getContext(),"Connected Successfully. Determining the location of "+ mainActivity.activeSatCode+" in 3d space.",Toast.LENGTH_LONG).show();
                 }
             },1000);
         });
@@ -109,9 +109,6 @@ public class VrViewFragment extends Fragment {
      * fetch all the necessary data
      */
     public void fetchInitialData(){
-        activeSatDataList = mainActivity.allSatDatFromSSCMap.get(mainActivity.activeSatCode);
-        if(activeSatDataList == null)
-            activeSatDataList = mainActivity.allSatelliteData.get(mainActivity.activeSatCode).getTrajectoryDataList();
         initSatPosition();
     }
 
@@ -151,8 +148,7 @@ public class VrViewFragment extends Fragment {
                         ,satellite.getHorizontalAngle()+90,satellite.getVerticalAngle()
                         ,predictDirection(azimuth,elevation)));*/
 
-                Toast.makeText(getContext(),"See "+predictDirection(azimuth,elevation)
-                        +" from your location to find "+ mainActivity.activeSatCode,Toast.LENGTH_LONG).show();
+                //Toast.makeText(getContext(),"See "+predictDirection(azimuth,elevation) +" from your location to find "+ mainActivity.activeSatCode,Toast.LENGTH_LONG).show();
             }
         },1000);
     }
@@ -213,7 +209,6 @@ public class VrViewFragment extends Fragment {
     public void onPause() {
         super.onPause();
         rotation.stop();
-
         mVRPanoramaView.pauseRendering();
     }
 

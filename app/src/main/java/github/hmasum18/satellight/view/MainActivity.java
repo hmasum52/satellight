@@ -3,7 +3,6 @@ package github.hmasum18.satellight.view;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.navigation.NavController;
 import androidx.navigation.NavDestination;
 import androidx.navigation.NavGraph;
@@ -22,10 +21,8 @@ import com.neosensory.tlepredictionengine.Tle;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,7 +33,6 @@ import github.hmasum18.satellight.dagger.component.ActivityComponent;
 import github.hmasum18.satellight.dagger.component.AppComponent;
 import github.hmasum18.satellight.dagger.module.ActivityModule;
 import github.hmasum18.satellight.databinding.ActivityMainBinding;
-import github.hmasum18.satellight.service.model.SatelliteData;
 import github.hmasum18.satellight.service.model.SatelliteTrajectory;
 import github.hmasum18.satellight.service.model.TrajectoryData;
 import github.hmasum18.satellight.utils.Utils;
@@ -64,10 +60,8 @@ public class MainActivity extends AppCompatActivity {
     //views datas
     public String activeSatCode = "ISS (ZARYA)"; //this is iss by default but will change when another one selected
     public Map<String, ArrayList<TrajectoryData>> allSatDatFromSSCMap = new HashMap<>();
-    public Map<String, SatelliteData> allSatelliteData = new HashMap<>();
 
     //views
-    public ConstraintLayout mainActvConstrainLayout;
     private NavController navController;
     private Integer activeFragmentId;
 
@@ -75,7 +69,6 @@ public class MainActivity extends AppCompatActivity {
     ArrayList<String> satCodeList = new ArrayList<>(Arrays.asList(
             "sun", "moon"
     ));
-
 
 
     @Override
@@ -86,19 +79,18 @@ public class MainActivity extends AppCompatActivity {
         mVB = ActivityMainBinding.inflate(super.getLayoutInflater());
         setContentView(mVB.getRoot());
 
-        
-        if(activityComponent == null)
+
+        if (activityComponent == null)
             initActivityComponent();
         activityComponent.inject(this);
-        
+
         getDeviceLocation();
 
-        fetchSatelliteDataFromAppScript();
+        fetchInitialData();
 
         mVB.rvSatelliteList.setAdapter(satelliteListAdapter);
         satelliteListAdapter.setSearchView(mVB.searchSatellite);
 
-        mainActvConstrainLayout = findViewById(R.id.mainActv_ConstrainLayout);
         navController = Navigation.findNavController(this, R.id.mainActv_nav_host_frag);
 
         initNavigationButtons();
@@ -130,7 +122,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void fetchSatelliteDataFromAppScript() {
+    private void fetchInitialData() {
 
         fetchSatDataFromSSC(satCodeList);
 
@@ -143,6 +135,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * name of the function suggest what it does
+     *
      * @param satCodeList
      */
     public void fetchSatDataFromSSC(ArrayList<String> satCodeList) {
@@ -150,22 +143,14 @@ public class MainActivity extends AppCompatActivity {
         long t = System.currentTimeMillis();
         String fromTime = Utils.getTimeAsString(t - (1000 * 60 * 5)); //before 5 min of current timestamp
         String toTime = Utils.getTimeAsString(t + 1000 * 60 * 20); //after 20 min of current timestamp
-        Log.d(TAG, "SSC API: "+fromTime + " && " + toTime);
+        Log.d(TAG, "SSC API: " + fromTime + " && " + toTime);
         mainViewModel.getLocationOfSatellite(satCodeList, fromTime, toTime)
                 .observe(this, satelliteBasicDataMap -> {
-            Log.d(TAG, "number of sat data in the map:" + satelliteBasicDataMap.size());
-        });
+                    Log.d(TAG, "fetchSatDataFromSSC: number of sat data in the map:" + satelliteBasicDataMap.size());
+                    this.allSatDatFromSSCMap = satelliteBasicDataMap;
+                });
     }
 
-    public void updateUI(Map<String, Object> data) {
-        SatelliteData satelliteData;
-        if (!activeSatCode.equals("moon")) {
-            satelliteData = allSatelliteData.get(activeSatCode);
-        } else {
-        }
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd/mm/yyyy,hh:mm:ss aa");
-        String date = simpleDateFormat.format(new Date((long) data.get("timestamp")));
-    }
 
     public void setStartDestination(Integer fragmentId) {
         NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager().findFragmentById(R.id.mainActv_nav_host_frag);
@@ -179,12 +164,12 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull @NotNull String[] permissions, @NonNull @NotNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        Log.d(TAG, "onRequestPermissionsResult: code: "+requestCode);
-        Log.d(TAG, "onRequestPermissionsResult: length: "+permissions.length);
+        Log.d(TAG, "onRequestPermissionsResult: code: " + requestCode);
+        Log.d(TAG, "onRequestPermissionsResult: length: " + permissions.length);
         for (String s :
                 permissions) {
-            Log.d(TAG, "onRequestPermissionsResult: "+s);
-            if(s.equals("android.permission.ACCESS_FINE_LOCATION")){
+            Log.d(TAG, "onRequestPermissionsResult: " + s);
+            if (s.equals("android.permission.ACCESS_FINE_LOCATION")) {
                 if (grantResults.length > 0
                         && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                     finish();
@@ -211,35 +196,26 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mVB.mainAcvtWebViewIBTN.setOnClickListener(v -> {
-            if (activeFragmentId != R.id.modelViewFragment
-                    && !activeSatCode.equals("moon")) {
+            if (activeFragmentId != R.id.modelViewFragment) {
                 mVB.mainActvDetailsBtn.setVisibility(View.GONE);
                 navController.navigate(R.id.modelViewFragment);
                 setStartDestination(R.id.modelViewFragment);
-            } else if (activeSatCode.equals("moon")) {
-                Toast.makeText(getApplicationContext(), "Moon data not available", Toast.LENGTH_SHORT).show();
             }
         });
 
         mVB.mainAcvtVrViewBtn.setOnClickListener(v -> {
-            if (activeFragmentId != R.id.vrViewFragment
-                    && !activeSatCode.equals("moon")) {
+            if (activeFragmentId != R.id.vrViewFragment) {
                 mVB.mainActvDetailsBtn.setVisibility(View.VISIBLE);
                 navController.navigate(R.id.vrViewFragment);
                 setStartDestination(R.id.vrViewFragment);
-            } else if (activeSatCode.equals("moon")) {
-                Toast.makeText(getApplicationContext(), "Moon data not available", Toast.LENGTH_SHORT).show();
             }
         });
 
         mVB.mainActvDetailsBtn.setOnClickListener(v -> {
-            if (activeFragmentId != R.id.detailsFragment
-                    && !activeSatCode.equals("moon")) {
+            if (activeFragmentId != R.id.detailsFragment) {
                 mVB.mainActvDetailsBtn.setVisibility(View.GONE);
                 navController.navigate(R.id.detailsFragment);
                 setStartDestination(R.id.detailsFragment);
-            } else if (activeSatCode.equals("moon")) {
-                Toast.makeText(getApplicationContext(), "Moon data not available", Toast.LENGTH_SHORT).show();
             }
         });
     }

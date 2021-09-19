@@ -5,6 +5,7 @@ import javax.inject.Singleton;
 import dagger.Component;
 import github.hmasum18.satellight.dagger.module.ActivityModule;
 import github.hmasum18.satellight.dagger.module.AppModule;
+import github.hmasum18.satellight.dagger.module.WorldWindModule;
 import github.hmasum18.satellight.dagger.module.network.NetworkModule;
 import github.hmasum18.satellight.dagger.module.RoomModule;
 import github.hmasum18.satellight.view.MainActivity;
@@ -12,7 +13,7 @@ import github.hmasum18.satellight.view.screen.googlemap.GoogleMapFragment;
 
 @Singleton
 @Component(modules = {AppModule.class, RoomModule.class,
-        NetworkModule.class})
+        NetworkModule.class, WorldWindModule.class})
 public interface AppComponent{
     ActivityComponent.Builder activityComponentBuilder();
 }

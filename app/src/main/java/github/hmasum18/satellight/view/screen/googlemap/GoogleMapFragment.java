@@ -82,9 +82,9 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
     //to show satellite
     public SatelliteTrajectory startPoint;
     public SatelliteTrajectory endPoint;
-    public long timeIntervalBetweenTwoData = 10 * 1000; //10 sec
+    public long timeIntervalBetweenTwoData = 20 * 1000; //20 sec
     public boolean satelliteMoving = false; //after camera moved to activated satellite position start moving the satellite
-    private Thread satelliteMoveTread;
+    private Handler satelliteMoveHandler;
     public ValueAnimator activeSatAnimator;
     public ViewPropertyAnimator satelliteAnimation;
 
@@ -117,6 +117,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         Log.d(TAG, "onViewCreated: ");
+        satelliteMoveHandler = new Handler();
     }
 
     @Override
@@ -244,11 +245,10 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
             return;
         }
 
-        new Handler().postDelayed(() -> {
+        satelliteMoveHandler.postDelayed(() -> {
             if (activeSatAnimator != null && activeSatAnimator.isRunning()) {
                 activeSatAnimator.end();
             }
-
             // next end point
             startPoint = endPoint;
             endPoint = getSatelliteTrajectoryData(
@@ -269,9 +269,6 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
         activeSatAnimator.addUpdateListener(animation -> {
             if (satelliteMoving) {
                 double multiplier = ((int)animation.getAnimatedValue()/(durationMilli/1000.0));
-                //Log.d(TAG, "updateSatelliteLocation: animated fraction: "+multiplier);
-                //Log.d(TAG, "updateSatelliteLocation: animated value: "+animation.getAnimatedValue());
-
                 //ease in the value
                 LatLng nextLocation = new LatLng(
                         multiplier * to.getLat() + (1 - multiplier) * from.getLat(),

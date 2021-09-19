@@ -105,7 +105,6 @@ public class GlobeUtils {
     }*/
 
     public static void addSatelliteToChipGroup(Fragment fragment, ChipGroup chipGroup, String name, String iconDrawableUrl){
-
         Glide.with(fragment)
                 .load(iconDrawableUrl)
                 .centerCrop()
@@ -114,7 +113,6 @@ public class GlobeUtils {
                     public void onResourceReady(@NonNull Drawable resource, @Nullable Transition<? super Drawable> transition) {
                         resource.setBounds(0,0,50,50);
                         satelliteIconMap.put(name,resource);
-                        addChip(fragment,chipGroup,name,resource);
                     }
 
                     @Override
@@ -122,51 +120,6 @@ public class GlobeUtils {
                     }
                 });
 
-    }
-
-    public static void addSatelliteToChipGroup(Fragment fragment, ChipGroup chipGroup, String name, int iconDrawableId){
-        Drawable drawable = fragment.getActivity().getDrawable(iconDrawableId);
-        satelliteIconMap.put(name,drawable);
-
-        addChip(fragment,chipGroup,name,drawable);
-    }
-
-    public static void addSatelliteToChipGroup(Fragment fragment, ChipGroup chipGroup, String name){
-        addChip(fragment,chipGroup,name,satelliteIconMap.get(name));
-    }
-
-    public static  void addChip(Fragment fragment, ChipGroup chipGroup, String name,Drawable drawable){
-        Chip chip = new Chip(fragment.getContext());
-        chip.setChipIcon(drawable);
-        chip.setChipIconSize(80);
-        chip.setHeight(130);
-        chip.setIconStartPadding(20f);
-        chip.setText(name);
-        chip.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#E5E5E5")));
-        chip.setOnClickListener(v -> {
-            String code =  ((Chip)v).getText().toString();
-            MainActivity mainActivity = (MainActivity) fragment.getActivity();
-            Log.w(TAG," selected Sat: "+code);
-            if(fragment instanceof  GoogleMapFragment){
-                GoogleMapFragment temp = (GoogleMapFragment) fragment;
-              /*  temp.activeSatDataList = mainActivity.allSatDatFromSSCMap.get(code);
-                if(temp.activeSatDataList == null)
-                    temp.activeSatDataList = mainActivity.allSatelliteData.get(code).getTrajectoryDataList();
-                temp.prevSatCode = mainActivity.activeSatCode;*/
-                mainActivity.activeSatCode = code;
-                //temp.initSatPosition();
-            }else{ //instance of globe fragment
-                GlobeFragment temp = (GlobeFragment) fragment;
-                temp.activeSatDataList = mainActivity.allSatDatFromSSCMap.get(code);
-                if(temp.activeSatDataList == null)
-                    temp.activeSatDataList = mainActivity.allSatelliteData.get(code).getTrajectoryDataList();
-                temp.prevSatCode = mainActivity.activeSatCode;
-                mainActivity.activeSatCode = code;
-                temp.initSatPosition();
-            }
-
-        });
-        chipGroup.addView(chip);
     }
 
 }
