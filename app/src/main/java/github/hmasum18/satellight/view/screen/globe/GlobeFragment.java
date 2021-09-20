@@ -30,6 +30,7 @@ import github.hmasum18.satellight.experimental.AtmosphereLayer;
 import github.hmasum18.satellight.service.model.Satellite;
 import github.hmasum18.satellight.service.model.SatelliteTrajectory;
 import github.hmasum18.satellight.service.model.TrajectoryData;
+import github.hmasum18.satellight.utils.LatLngInterpolator;
 import github.hmasum18.satellight.utils.tle.TleToGeo;
 import github.hmasum18.satellight.view.OnSelectedSatelliteUpdateListener;
 import github.hmasum18.satellight.view.adapter.SatelliteListAdapter;
@@ -53,7 +54,9 @@ import gov.nasa.worldwind.shape.TextAttributes;
 public class GlobeFragment extends Fragment implements Choreographer.FrameCallback {
 
     public static final String TAG = "GlobeFragment:";
-    public static final int ALT = 40000*1000;
+    public static final int ALT = 40000 * 1000;
+
+    public long timeIntervalBetweenTwoData = 20 * 1000; //20 sec
 
     //for accessing common method of all the fragments
     MainActivity mainActivity;
@@ -89,7 +92,6 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
 
     //for currently tracked satellite
     public String prevSatCode = "";
-    public Position activeSatPosition = new Position(0, 0, 0);
     public long intervalInSec = 10; //in seconds
     public boolean satelliteMoving = false; //after camera moved to activated satellite position start moving the satellite
     public ValueAnimator activeCameraValueAnimator; //move the camera to animatedly
@@ -180,6 +182,7 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
 
         Choreographer.getInstance().removeFrameCallback(this);
         this.fragmentPaused = true;
+        this.satelliteMoving = false;
         this.lastFrameTimeNanos = 0;
         this.worldWindow.onPause();
         Log.w(TAG, " globe fragment paused and detached ");
@@ -205,7 +208,7 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
     public void locateSun() {
         ArrayList<TrajectoryData> sunDataList = mainActivity.allSatDatFromSSCMap.get("sun");
 
-        if (sunDataList == null ||sunDataList.size() < 2)
+        if (sunDataList == null || sunDataList.size() < 2)
             return;
 
         long timeDiff = (sunDataList.get(1).getTimestamp() - sunDataList.get(0).getTimestamp()) / 1000; //in sec
@@ -236,36 +239,6 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
     }
 
     /**
-     * @param position     is next position of the space object
-     * @param moveDuration duration in milli seconds
-     */
-    public void moveCamera(Position position, long moveDuration) {
-        double currentCameraLat = worldWindow.getNavigator().getLatitude();
-        double currentCameraLng = worldWindow.getNavigator().getLongitude();
-        double currentCameraHeightInKm = this.getCurrentAltitudeInKm(); //converts to km
-
-        activeCameraValueAnimator = ValueAnimator.ofFloat((float) currentCameraLat, (float) position.latitude);
-        activeCameraValueAnimator.setInterpolator(new LinearInterpolator());
-        activeCameraValueAnimator.addUpdateListener(animation -> {
-            if (fragmentPaused)
-                return;
-
-            float percent = animation.getAnimatedFraction();
-            //Log.w(TAG," sat lat percent :"+percent);
-            double lat = (1 - percent) * currentCameraLat + percent * position.latitude;
-            double lng = (1 - percent) * currentCameraLng + percent * position.longitude;
-            double altitude = (1 - percent) * currentCameraHeightInKm + percent * position.altitude;
-
-            worldWindow.getNavigator().setLatitude(lat);
-            worldWindow.getNavigator().setLongitude(lng);
-            worldWindow.getNavigator().setAltitude(Math.max(ALT,altitude * 1000)); //converts to meter agian
-        });
-        activeCameraValueAnimator.setDuration(moveDuration);
-        activeCameraValueAnimator.start();
-    }
-
-
-    /**
      * locate the satellite and navigator camera accordingly after satellite data is initialized
      * called from fetchSatDataFromSSE method
      */
@@ -279,29 +252,83 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
         }
 
         Tle tle = satellite.extractTle();
-        deviceLocationFinder.requestDeviceLocation(latLng -> {
-            SatelliteTrajectory startPoint = TleToGeo.getSatellitePosition(tle, System.currentTimeMillis(), latLng);
-            SatelliteTrajectory endPoint = TleToGeo.getSatellitePosition(tle, System.currentTimeMillis() + intervalInSec * 1000, latLng);
+        deviceLocationFinder.requestDeviceLocation(devicesLatLng -> {
+            SatelliteTrajectory startPoint = TleToGeo.getSatellitePosition(tle, System.currentTimeMillis(), devicesLatLng);
 
             double lat = startPoint.getLat();
             double lng = startPoint.getLng();
             double altitude = startPoint.getHeight();
-            double velocity = startPoint.getSpeed();
 
-            activeSatPosition = new Position(lat, lng, altitude);
+            LatLng latLng = new LatLng(lat, lng);
 
+            // move camera to new selected satellite position in 500 milli seconds
+            moveCamera(latLng, altitude, 500);
 
-            moveCamera(activeSatPosition, 500);
-
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    satelliteMoving = true;
-                }
-            }, 1050);
+            new Handler().postDelayed(() -> {
+                satelliteMoving = true;
+                lastTimeStamp = System.currentTimeMillis();
+                animateCamera();
+            }, 500);
         });
-
     }
+
+    private long lastTimeStamp;
+
+    private void animateCamera() {
+        if (!satelliteMoving) { // thread finish condition.
+            return;
+        }
+        lastTimeStamp = lastTimeStamp + 60 * 60 * 1000;
+        // calculate new trajectory data
+        SatelliteTrajectory data = getSatelliteTrajectoryData(lastTimeStamp);
+
+        // move camera to new position with predefined timestamp
+        moveCamera(data.getLatLng(), data.getHeight(), timeIntervalBetweenTwoData);
+
+        // recursively animate again after pre specified timestamp.
+        new Handler().postDelayed(this::animateCamera, timeIntervalBetweenTwoData);
+    }
+
+    private SatelliteTrajectory getSatelliteTrajectoryData(long timestamp) {
+        Log.d(TAG, "updateTrajectoryData: ");
+        Tle tle = satelliteListAdapter.getSelectedSatellite().extractTle();
+        return TleToGeo.getSatellitePosition(tle, timestamp, deviceLocationFinder.getDeviceLatLng());
+    }
+
+
+    /**
+     * @param moveDuration duration in milli seconds
+     */
+    public void moveCamera(LatLng newtLatLng, double alt, long moveDuration) {
+        // current location of the satellite
+        LatLng currentLatLng = new LatLng(
+                worldWindow.getNavigator().getLatitude(),
+                worldWindow.getNavigator().getLongitude()
+        );
+        double currentCameraHeightInKm = this.getCurrentAltitudeInKm(); //converts to km
+
+        // animator to animate the satellite
+        activeCameraValueAnimator = ValueAnimator.ofFloat(
+                (float) currentLatLng.latitude,
+                (float) newtLatLng.latitude);
+
+        activeCameraValueAnimator.setInterpolator(new LinearInterpolator());
+
+        activeCameraValueAnimator.addUpdateListener(animation -> {
+            if (fragmentPaused)
+                return;
+            float fraction = animation.getAnimatedFraction();
+            LatLng interpolatedLatLng = LatLngInterpolator.interpolate(fraction, currentLatLng, newtLatLng);
+            double altitude = alt + (alt - currentCameraHeightInKm) * fraction;
+
+            worldWindow.getNavigator().setLatitude(interpolatedLatLng.latitude);
+            worldWindow.getNavigator().setLongitude(interpolatedLatLng.longitude);
+            worldWindow.getNavigator().setAltitude(Math.max(ALT, altitude * 1000)); //converts to meter agian
+        });
+        activeCameraValueAnimator.setDuration(moveDuration);
+        activeCameraValueAnimator.start();
+    }
+
 
     private double getCurrentAltitudeInKm() {
         return worldWindow.getNavigator().getAltitude() / 1000.0;
@@ -316,7 +343,7 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
      */
     @Override
     public void doFrame(long frameTimeNanos) {
-        if (this.lastFrameTimeNanos != 0 && atmosphereLayer!=null) {
+        if (this.lastFrameTimeNanos != 0 && atmosphereLayer != null) {
             // Compute the frame duration in seconds.
             double frameDurationSeconds = (frameTimeNanos - this.lastFrameTimeNanos) * 1.0e-9;
             // double cameraDegrees = (frameDurationSeconds * this.cameraDegreesPerSecond);
@@ -352,35 +379,5 @@ public class GlobeFragment extends Fragment implements Choreographer.FrameCallba
 
         this.lastFrameTimeNanos = frameTimeNanos;
     }
-
-    /**
-     * animate the satellite and move the camera after certain amount of time
-     */
-    /*public void animateSatellite(){
-        long currentTimestamp = System.currentTimeMillis();
-        long duration = (currentTimestamp - activeSatDataList.get(0).getTimestamp())/1000;
-
-        int idx = (int)( duration/ intervalInSec);
-       // Log.w(TAG,"current idx:"+idx);
-        if(idx>=0 && idx< activeSatDataList.size()-1 && idx != activeSatDataListIdx && satelliteMoving)
-        {
-            activeSatDataListIdx = idx;
-            Log.w(TAG,"acitveSat:"+ activeSatDataListIdx);
-            TrajectoryData prevData = activeSatDataList.get(idx);
-            TrajectoryData data = activeSatDataList.get(idx+1);
-            Position position = new Position(data.getLat(),data.getLng(),data.getHeight());
-            long timestampDiff = activeSatDataList.get(idx+1).getTimestamp() - activeSatDataList.get(idx).getTimestamp();
-            Log.w(TAG,"timestampDiff "+ timestampDiff);
-
-            //fetch dat again
-            if(idx>= activeSatDataList.size()-3){
-                *//*long start = mainActivity.lastRequestedTimestampEnd - 1000*60*5;
-                long end = mainActivity.lastRequestedTimestampEnd + 1000*60*20;*//*
-               // mainViewModel.callForDataAgain(start,end, mainActivity.deviceLatLng);
-            }
-            moveCamera(position,timestampDiff,"sat",prevData.getVelocity(),data.getVelocity()); //as data difference is 60 sec
-        }
-    }*/
-
 }
 
