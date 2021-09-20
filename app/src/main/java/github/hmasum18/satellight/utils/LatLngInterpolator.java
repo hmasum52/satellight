@@ -2,6 +2,8 @@ package github.hmasum18.satellight.utils;
 
 import com.google.android.gms.maps.model.LatLng;
 
+// https://www.youtube.com/watch?v=WKfZsCKSXVQ
+// https://stackoverflow.com/questions/14864664/animating-markers-on-google-maps-v2
 public class LatLngInterpolator {
     public static LatLng interpolate(float fraction, LatLng a, LatLng b) {
         double lat = (b.latitude - a.latitude) * fraction + a.latitude;

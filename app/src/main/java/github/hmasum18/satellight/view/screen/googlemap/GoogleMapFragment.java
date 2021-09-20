@@ -21,6 +21,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewPropertyAnimator;
+import android.view.animation.LinearInterpolator;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -252,19 +253,47 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
         final LatLng startPosition = movingSatelliteMarker.getPosition();
         final LatLng endPosition = to.getLatLng();
 
-        activeSatAnimator = MapUtils.satelliteAnimation(durationMilli);
-        activeSatAnimator.addUpdateListener(animation -> {
-            if (satelliteMoving) {
-                float fraction = animation.getAnimatedFraction();
-                Log.d(TAG, "updateSatelliteLocation: fraction: " + fraction);
-                //ease in the value
-                LatLng nextLocation = LatLngInterpolator.interpolate(fraction, startPosition, endPosition);
+        if(activeSatAnimator!=null && activeSatAnimator.isRunning()){
+            activeSatAnimator.end();
+        }
 
-                movingSatelliteMarker.setPosition(nextLocation);
+        activeSatAnimator = ValueAnimator.ofInt(0,(int)(durationMilli/1000.0));
+        activeSatAnimator.setInterpolator(new LinearInterpolator());
+        activeSatAnimator.setDuration(durationMilli);
+        int prevValue = -1;
+        activeSatAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            private int prevValue = -1;
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                if (satelliteMoving) {
+                    int v = (int) animation.getAnimatedValue();
 
-                // animateCamera(nextLocation);
-                // moveCamera(nextLocation,0f);
-                addLineBetweenTwoPoints(startPosition, nextLocation);
+                    // we will have so many call backs with the same value
+                    // which freezes the screen
+                    // here will handle it
+                    if(!isValueUpdate(v))
+                        return;
+
+                    Log.d(TAG, "updateSatelliteLocation: value: "+v);
+                    float fraction = v/(durationMilli/1000.0f);
+                    Log.d(TAG, "updateSatelliteLocation: fraction: " + fraction);
+                    //ease in the value
+                    LatLng nextLocation = LatLngInterpolator.interpolate(fraction, startPosition, endPosition);
+
+                    movingSatelliteMarker.setPosition(nextLocation);
+
+                    // animateCamera(nextLocation);
+                    // moveCamera(nextLocation,0f);
+                    addLineBetweenTwoPoints(startPosition, nextLocation);
+                }
+            }
+
+            private boolean isValueUpdate(int v){
+                boolean isUpdated = prevValue != v;
+                if(isUpdated){
+                    prevValue = v;
+                }
+                return isUpdated;
             }
         });
         activeSatAnimator.start();
