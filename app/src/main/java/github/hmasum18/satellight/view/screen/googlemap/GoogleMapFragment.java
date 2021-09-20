@@ -45,6 +45,7 @@ import javax.inject.Inject;
 import github.hmasum18.satellight.R;
 import github.hmasum18.satellight.databinding.FragmentGoogleMapBinding;
 import github.hmasum18.satellight.service.model.SatelliteTrajectory;
+import github.hmasum18.satellight.utils.LatLngInterpolator;
 import github.hmasum18.satellight.utils.MapUtils;
 import github.hmasum18.satellight.utils.tle.TleToGeo;
 import github.hmasum18.satellight.view.adapter.SatelliteListAdapter;
@@ -93,7 +94,7 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate: ");
         mainActivity = (MainActivity) this.getActivity();
-        if(mainActivity.activityComponent==null)
+        if (mainActivity.activityComponent == null)
             mainActivity.initActivityComponent();
         mainActivity.activityComponent.inject(this);
     }
@@ -204,18 +205,12 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
         // add satellite marker in startPoint
         // init new selected satellite position.
         startPoint = getSatelliteTrajectoryData(System.currentTimeMillis());
-        endPoint = getSatelliteTrajectoryData(System.currentTimeMillis() + timeIntervalBetweenTwoData);
 
+        // add new satellite and move camera to new position
         addNewSatelliteToMap(startPoint.getLatLng());
 
-        // start moving the satellite in separate thread
-        new Handler().post(() -> {
-            satelliteMoving = true;
-            updateSatelliteLocation(startPoint, endPoint, timeIntervalBetweenTwoData);
-            // call the recursive function to animate
-            // after time interval between 2 data.
-            moveSatellite();
-        });
+        satelliteMoving = true;
+        moveSatellite(); // recursive function that animates the satellite
     }
 
     private void addNewSatelliteToMap(LatLng latLng) {
@@ -240,45 +235,36 @@ public class GoogleMapFragment extends Fragment implements OnMapReadyCallback {
             return;
         }
 
-        satelliteMoveHandler.postDelayed(() -> {
-            if (activeSatAnimator != null && activeSatAnimator.isRunning()) {
-                activeSatAnimator.end();
-            }
-            // next end point
-            startPoint = endPoint;
-            endPoint = getSatelliteTrajectoryData(
-                    endPoint.getTime().getTime() + timeIntervalBetweenTwoData);
-            updateSatelliteLocation(startPoint, endPoint, timeIntervalBetweenTwoData);
-            moveSatellite(); 
-        }, timeIntervalBetweenTwoData);
+        if (activeSatAnimator != null && activeSatAnimator.isRunning()) {
+            activeSatAnimator.end();
+        }
+        // next end point
+        endPoint = getSatelliteTrajectoryData(System.currentTimeMillis() + timeIntervalBetweenTwoData);
+        updateSatelliteLocation(endPoint, timeIntervalBetweenTwoData);
+
+        satelliteMoveHandler.postDelayed(this::moveSatellite, timeIntervalBetweenTwoData);
     }
 
     /**
      * update the satellite location which help us to achieve the satellite animation
      */
-    private void updateSatelliteLocation(SatelliteTrajectory from, SatelliteTrajectory to, long durationMilli) {
-        movingSatelliteMarker.setPosition(from.getLatLng());
-        movingSatelliteMarker.setAnchor(0.4f, 0.4f);
+    private void updateSatelliteLocation(SatelliteTrajectory to, long durationMilli) {
+        final LatLng startPosition = movingSatelliteMarker.getPosition();
+        final LatLng endPosition = to.getLatLng();
 
         activeSatAnimator = MapUtils.satelliteAnimation(durationMilli);
         activeSatAnimator.addUpdateListener(animation -> {
             if (satelliteMoving) {
-                double multiplier = ((int)animation.getAnimatedValue()/(durationMilli/1000.0));
+                float fraction = animation.getAnimatedFraction();
+                Log.d(TAG, "updateSatelliteLocation: fraction: " + fraction);
                 //ease in the value
-                LatLng nextLocation = new LatLng(
-                        multiplier * to.getLat() + (1 - multiplier) * from.getLat(),
-                        multiplier * to.getLng() + (1 - multiplier) * from.getLng()
-                );
-
-                double nextHeight = multiplier * to.getHeight() + (1 - multiplier) * from.getHeight();
-                double nextVelocity = multiplier * to.getSpeed() + (1 - multiplier) * from.getSpeed();
+                LatLng nextLocation = LatLngInterpolator.interpolate(fraction, startPosition, endPosition);
 
                 movingSatelliteMarker.setPosition(nextLocation);
-                movingSatelliteMarker.setAnchor(0.5f, 0.5f);
 
                 // animateCamera(nextLocation);
                 // moveCamera(nextLocation,0f);
-                addLineBetweenTwoPoints(from.getLatLng(), nextLocation);
+                addLineBetweenTwoPoints(startPosition, nextLocation);
             }
         });
         activeSatAnimator.start();
