@@ -12,7 +12,7 @@ This app was made for NASA Space App Challenge 2020 under the category "Connect"
 
 As people use google map(or other map) in their every day life, so this map view can help them to understand the location of the satellite easily.
 
-[<img src ="/readme folder/gif/mapview android.gif" idth="70%">](/readme folder/gif/mapview android.gif.gif)
+![Map View](/readme folder/gif/mapview android.mov)
 
 ---
 
